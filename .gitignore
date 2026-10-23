@@ -1,0 +1,20 @@
+# Private: never published (tools/preflight.py enforces this).
+# Note: git does not allow comments at the end of a pattern line.
+# planning notes (Word) and PLAN.md
+notes/
+# Word write-up, its content file, screenshots
+submission/
+# CV, job description, prep material
+references/
+# skills used to build this, and Claude instructions
+.claude/
+CLAUDE.md
+START_HERE.md
+.env
+*.docx
+*.pdf
+
+# Environment
+.venv/
+__pycache__/
+*.pyc

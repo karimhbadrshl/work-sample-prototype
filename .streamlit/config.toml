@@ -1,0 +1,10 @@
+# Karim brand, paper theme. tools/build_static.py copies these into the browser build.
+[theme]
+base = "light"
+primaryColor = "#22252B"
+backgroundColor = "#F2EFE6"
+secondaryBackgroundColor = "#FBFAF6"
+textColor = "#22252B"
+
+[client]
+toolbarMode = "viewer"

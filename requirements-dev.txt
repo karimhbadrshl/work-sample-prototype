@@ -1,0 +1,6 @@
+# Tools used while building (not needed to run the app)
+-r prototype/requirements.txt
+playwright>=1.50     # tools/e2e_check.py; uses the installed Google Chrome, no browser download
+python-docx>=1.1     # Word write-up and planning notes
+pillow>=10           # brand assets for the Word write-up
+pymupdf>=1.24        # render the exported PDF for a visual check
