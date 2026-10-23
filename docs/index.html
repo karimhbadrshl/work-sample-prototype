@@ -172,7 +172,7 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
   // Free observations: what the candidate can see and hear without spending test budget.
   function observe(state, fault) {
     const o = solve(state, fault);
-    return { H1: o.PSU.v >= PULL_IN ? 'on' : o.PSU.v > 0 ? 'dim' : 'off', M: o.M.hum ? 'humming' : o.M.run ? 'running' : 'stopped' };
+    return { H1: o.PSU.v >= PULL_IN ? 'on' : o.PSU.v > 0 ? 'dim' : 'off', M: o.M.hum ? 'jammed' : o.M.run ? 'running' : 'stopped' };
   }
 
   // Paid tests. A test is {type:'V'|'SWAP', node}.
@@ -254,15 +254,15 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
     const L = (name, tag) => `${name} ${tag}`;
     return [
       { id: 'method', keys: ['method', 'approach', 'strategy', 'where', 'start', 'how do i', 'how to', 'begin', 'stuck', 'help'],
-        title: 'Method', text: 'Work from what you can see to what you can measure. A reading at a point in the line tells you whether the fault is before it or after it, so a test near the middle of what is left rules out more than one at the ends. Lamps and sounds are free; a voltmeter reading costs 1; a spare part costs 3.' },
+        title: 'Method', text: 'Work from what you can see to what you can measure. A reading at a point in the line tells you whether the fault is before it or after it, so a test near the middle of what is left rules out more than one at the ends. The lamp and the motor movement are free; a voltmeter reading costs 1; a spare part costs 3.' },
       { id: 'meter', keys: ['meter', 'voltmeter', 'measure', 'probe', 'reading', 'tool'],
         title: 'The voltmeter', text: `Pick the voltmeter, then click a part to read the voltage at its output terminal. The mains side (up to the fuse) is 230 V AC; everything after ${T.PSU} is 24 V DC. The pump switch gives 0 V when it is off, which is normal, so switch it on before you read anything.` },
       { id: 'lamps', keys: ['lamp', 'light', 'h1', 'indicator', 'led'],
         title: 'Lamp H1', text: `H1 shows the ${T.PSU} output: lit at 20 V or more, dim between 0 and 20 V, dark at 0 V.` },
       { id: 'swap', keys: ['swap', 'spare', 'replace', 'change part'],
         title: 'Spare part', text: 'A known-good spare can be swapped into any of the five parts. It costs 3 and tells you only whether that one part was the cause. If it was, the pump runs. It is a confirmation tool, not a search tool.' },
-      { id: 'hum', keys: ['hum', 'noise', 'sound', 'buzz'],
-        title: 'Motor sounds', text: 'A motor with power at its terminals that hums but does not turn is mechanically stuck. A motor with power and no sound has an open winding.' },
+      { id: 'hum', keys: ['shake', 'vibrat', 'jam', 'stuck', 'stall', 'movement'],
+        title: 'Motor movement', text: 'A motor with power at its terminals that shakes but does not turn is mechanically jammed (seized). A motor with power that stays perfectly still has an open winding.' },
       { id: 'tank', keys: ['tank', 'fill', 'filled', 'water'],
         title: 'The tank', text: `When the pump runs, the tank fills. The level switch ${T.LS} is closed while the tank has room, and opens when it is full to stop the pump.` },
       { id: 'F', keys: [T.F.toLowerCase(), 'fuse'], title: L('Fuse', T.F), text: '6.3 A slow-blow fuse. Healthy: 230 V AC at its output. A blown fuse passes no voltage.' },
@@ -270,7 +270,7 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
       { id: 'SW', keys: [T.SW.toLowerCase(), 'pump switch', 'switch'], title: L('Pump switch', T.SW), text: 'Operator switch. ON passes 24 V on; OFF gives 0 V. Off is not a fault.' },
       { id: 'LS', keys: [T.LS.toLowerCase(), 'level switch', 'float'], title: L('Level switch', T.LS), text: 'Closed while the tank has room, so 24 V passes through. It opens when the tank is full.' },
       { id: 'K', keys: [T.K.toLowerCase(), 'contactor', 'relay'], title: L('Contactor', T.K), text: 'Pulls in at 20 V or more at its coil feed and passes 24 V to the pump motor.' },
-      { id: 'M', keys: [T.M.toLowerCase(), 'motor', 'pump'], title: L('Pump motor', T.M), text: '24 V DC motor. Healthy: 24 V at its terminals and it turns. Seized rotor: 24 V at the terminals, hums, does not turn. Open winding: 24 V at the terminals, silent, does not turn.' },
+      { id: 'M', keys: [T.M.toLowerCase(), 'motor', 'pump'], title: L('Pump motor', T.M), text: '24 V DC motor. Healthy: 24 V at its terminals and it turns. Seized rotor: 24 V at the terminals, shakes, does not turn. Open winding: 24 V at the terminals, stays still.' },
     ];
   }
 
@@ -549,7 +549,7 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
     l.setAttribute('x2', st.SW ? cx : cx - 14); l.setAttribute('y2', st.SW ? 140 : 144);
     $('[data-lamp="H1"]').setAttribute('class', `lamp lamp-${o.H1}`); $('[data-lamptxt="H1"]').textContent = `H1 ${o.H1.toUpperCase()}`;
     const running = o.M === 'running';
-    $('#g-pump').setAttribute('class', running ? 'running' : o.M === 'humming' ? 'humming' : '');
+    $('#g-pump').setAttribute('class', running ? 'running' : o.M === 'jammed' ? 'humming' : '');
     clearTimeout(tankTimer);
     $('#tanktxt').textContent = running ? 'FILLING…' : 'TANK EMPTY';
     if (running) tankTimer = setTimeout(() => { const t = $('#tanktxt'); if (t) t.textContent = 'TANK FULL'; }, 6500);
@@ -562,7 +562,7 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
     const T = form.tags, tested = (n) => S.tests.some((t) => t.test.type === 'V' && t.test.node === n);
     return [
       { h: 'Switch the pump on', t: `Hello, and thanks for trying this. The tank is not filling, so the pump is not doing its job. Start by switching it on: with the Hand tool selected, click the pump switch (${T.SW}). Switching costs nothing.`, hl: '.part[data-id="SW"]', done: () => S.state.SW },
-      { h: 'Read the lamp and the motor', t: `Look at the scene. Lamp H1 is lit, so the power supply is working. The pump motor is stopped and the tank is empty. Lamps and sounds are free clues. When you are ready, pick the Voltmeter below the scene.`, hl: '[data-tool="V"]', done: () => tool === 'V' },
+      { h: 'Read the lamp and the motor', t: `Look at the scene. Lamp H1 is lit, so the power supply is working. The pump motor is stopped and the tank is empty. The lamp and the motor's movement are free clues. When you are ready, pick the Voltmeter below the scene.`, hl: '[data-tool="V"]', done: () => tool === 'V' },
       { h: 'Test part-way along the line', t: `Power flows left to right: fuse, power supply, switch, level switch, contactor, motor. With the Voltmeter, click the level switch (${T.LS}) to read its output. Each reading costs 1; your running cost is at the top right. Good diagnosticians choose tests that rule out as much as possible.`, hl: '.part[data-id="LS"]', done: () => tested('LS') },
       { h: 'Narrow it down', t: `24 V: power gets as far as ${T.LS}. That leaves the contactor ${T.K} and the motor ${T.M}. Read the contactor ${T.K} next.`, hl: '.part[data-id="K"]', done: () => tested('K') },
       { h: 'Meet the AI mentor', t: `0 V at ${T.K}, with 24 V going in. Before you decide, try the mentor in the right-hand panel. Ask what a healthy contactor needs, or ask "Which part is faulty?" to see what it will and will not do. The Reference guide tab holds the same specs.`, hl: '#q', done: () => S.log.some((e) => e.kind === 'mentor') },

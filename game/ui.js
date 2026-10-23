@@ -156,7 +156,7 @@
     l.setAttribute('x2', st.SW ? cx : cx - 14); l.setAttribute('y2', st.SW ? 140 : 144);
     $('[data-lamp="H1"]').setAttribute('class', `lamp lamp-${o.H1}`); $('[data-lamptxt="H1"]').textContent = `H1 ${o.H1.toUpperCase()}`;
     const running = o.M === 'running';
-    $('#g-pump').setAttribute('class', running ? 'running' : o.M === 'humming' ? 'humming' : '');
+    $('#g-pump').setAttribute('class', running ? 'running' : o.M === 'jammed' ? 'humming' : '');
     clearTimeout(tankTimer);
     $('#tanktxt').textContent = running ? 'FILLING…' : 'TANK EMPTY';
     if (running) tankTimer = setTimeout(() => { const t = $('#tanktxt'); if (t) t.textContent = 'TANK FULL'; }, 6500);
@@ -169,7 +169,7 @@
     const T = form.tags, tested = (n) => S.tests.some((t) => t.test.type === 'V' && t.test.node === n);
     return [
       { h: 'Switch the pump on', t: `Hello, and thanks for trying this. The tank is not filling, so the pump is not doing its job. Start by switching it on: with the Hand tool selected, click the pump switch (${T.SW}). Switching costs nothing.`, hl: '.part[data-id="SW"]', done: () => S.state.SW },
-      { h: 'Read the lamp and the motor', t: `Look at the scene. Lamp H1 is lit, so the power supply is working. The pump motor is stopped and the tank is empty. Lamps and sounds are free clues. When you are ready, pick the Voltmeter below the scene.`, hl: '[data-tool="V"]', done: () => tool === 'V' },
+      { h: 'Read the lamp and the motor', t: `Look at the scene. Lamp H1 is lit, so the power supply is working. The pump motor is stopped and the tank is empty. The lamp and the motor's movement are free clues. When you are ready, pick the Voltmeter below the scene.`, hl: '[data-tool="V"]', done: () => tool === 'V' },
       { h: 'Test part-way along the line', t: `Power flows left to right: fuse, power supply, switch, level switch, contactor, motor. With the Voltmeter, click the level switch (${T.LS}) to read its output. Each reading costs 1; your running cost is at the top right. Good diagnosticians choose tests that rule out as much as possible.`, hl: '.part[data-id="LS"]', done: () => tested('LS') },
       { h: 'Narrow it down', t: `24 V: power gets as far as ${T.LS}. That leaves the contactor ${T.K} and the motor ${T.M}. Read the contactor ${T.K} next.`, hl: '.part[data-id="K"]', done: () => tested('K') },
       { h: 'Meet the AI mentor', t: `0 V at ${T.K}, with 24 V going in. Before you decide, try the mentor in the right-hand panel. Ask what a healthy contactor needs, or ask "Which part is faulty?" to see what it will and will not do. The Reference guide tab holds the same specs.`, hl: '#q', done: () => S.log.some((e) => e.kind === 'mentor') },

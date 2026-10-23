@@ -17,7 +17,7 @@
 
 The engine keeps the set of faults consistent with every observation. That set separates a diagnosis from a guess and defines a wasted test.
 
-**The AI mentor.** It supplies what the candidate cannot know (healthy readings, what a lamp or a hum means, how the meter works). It is never given the fault, so it cannot leak it, and it declines to confirm guesses. In this demo it is a rules mock; a language-model version would sit behind a server with the same guardrails and prompts.
+**The AI mentor.** It supplies what the candidate cannot know (healthy readings, what a lamp or a shaking motor means, how the meter works). It is never given the fault, so it cannot leak it, and it declines to confirm guesses. In this demo it is a rules mock; a language-model version would sit behind a server with the same guardrails and prompts.
 
 **Anti-cheating, in layers.** (1) Each item has its own fault and part labels from a seed. (2) Scoring and routing use the process, so a pasted answer with no supporting tests loses half the accuracy credit, all efficiency credit, and is not routed up. (3) The mentor will not name or confirm the fault; every exchange is logged. (4) Telemetry flags (paste, copy, leaving the window, implausible speed, answer-seeking, injection attempts, unsupported correct answers) go to a human reviewer and never change the score. (5) In production, a short parallel-form verification would follow. Candidates are told what is recorded before they start.
 

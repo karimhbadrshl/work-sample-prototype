@@ -15,7 +15,7 @@ Simulated strategies play the real engine on all 7 fault states, 20 forms each (
 | window switcher | 140 | 100 | 0 | 100 | 100 | 1 |
 
 Ordering optimal > linear walk > over-tester > guesser: **true**. Answer-key cheater below every honest solver that runs tests: **true**. False-flag rate among honest simulated solvers: **0%**.
-Cheater mean: 35 on faults that need a test, 67.5 on the 2 faults the lamp and sound already identify (flags still fire).
+Cheater mean: 35 on faults that need a test, 67.5 on the 2 faults the lamp and the motor's movement already identify (flags still fire).
 
 Item bank: easy 2 items (efficient-route cost 0, 0); medium 3 items (efficient-route cost 1, 1, 1); hard 2 items (efficient-route cost 2, 2). Every fault can be isolated by tests: **true**.
 
