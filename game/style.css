@@ -105,3 +105,5 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
 .tool.hl, #q.hl, #dxsel.hl { outline: 3px solid var(--blue); outline-offset: 2px; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .part.hl .box, .tool.hl, #q.hl, #dxsel.hl { animation: none; } }
+.coachnav { display: flex; gap: 8px; margin: 6px 0 2px; }
+.coachnav .btn { padding: 4px 14px; }

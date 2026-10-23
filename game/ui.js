@@ -94,6 +94,7 @@
   });
 
   function setTool(t) {
+    if (tut) tut.pin = null;
     tool = t; pendingSwap = null;
     document.querySelectorAll('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
     say({ hand: 'Hand: click a switch to operate it.', V: 'Voltmeter: click a part to read its output. Cost 1.', I: 'Clamp ammeter: click a motor. Cost 1.', SWAP: 'Spare part: click a part to swap it. Cost 3.' }[t]);
@@ -105,6 +106,7 @@
 
   function act(id) {
     if (S.done) return;
+    if (tut) tut.pin = null;
     selected = id;
     const gate = { Q1: 'Q1', S1: 'S1', SW1: 'SW1', SW2: 'SW2' }[id];
     if (tool === 'hand') {
@@ -137,6 +139,7 @@
 
   function ask() {
     const q = $('#q').value.trim(); if (!q || S.done) return;
+    if (tut) tut.pin = null;
     const r = S.ask(q); $('#q').value = '';
     $('#p-mentor').insertAdjacentHTML('beforeend', `<div class="msg you"><span class="who">You</span>${esc(q)}</div><div class="msg ai"><span class="who">AI mentor</span>${esc(r.text)}</div>`);
     $('#p-mentor').scrollTop = 1e6;
@@ -188,13 +191,22 @@
     document.querySelectorAll('.hl').forEach((n) => n.classList.remove('hl'));
     if (!tut) { el.hidden = true; return; }
     const list = steps();
-    while (tut.i < list.length && list[tut.i].done()) tut.i++;
+    let far = 0;
+    while (far < list.length && list[far].done()) far++;
+    if (tut.pin !== null && tut.pin >= far) tut.pin = null;
+    const i = tut.pin !== null ? tut.pin : far;
+    tut.i = i;
     el.hidden = false;
-    if (tut.i >= list.length) { el.innerHTML = '<div class="kicker"><span>Practice complete</span></div><p>Well done. That is all there is to it.</p>'; return; }
-    const st = list[tut.i];
-    el.innerHTML = `<div class="kicker"><span>Guided practice · step ${tut.i + 1} of ${list.length}</span><button class="link" id="skipTut">Skip the practice</button></div><h2>${esc(st.h)}</h2><p>${esc(st.t)}</p>`;
-    $('#skipTut').onclick = () => { tut = null; startReal(); };
-    const target = document.querySelector(st.hl); if (target) target.classList.add('hl');
+    const nav = (back, fwd) => `<p class="coachnav">${back ? '<button class="btn" id="prevStep">Previous</button>' : ''}${fwd ? '<button class="btn primary" id="nextStep">Next</button>' : ''}</p>`;
+    if (i >= list.length) { el.innerHTML = '<div class="kicker"><span>Practice complete</span></div><p>Well done. That is all there is to it.</p>' + nav(true, false); }
+    else {
+      const st = list[i], past = tut.pin !== null;
+      el.innerHTML = `<div class="kicker"><span>Guided practice · step ${i + 1} of ${list.length}</span><button class="link" id="skipTut">Skip the practice</button></div><h2>${esc(st.h)}</h2><p>${esc(st.t)}</p>${past ? '<p class="muted">You have already done this step. Press Next to carry on, or just keep going.</p>' : ''}${nav(i > 0, past)}`;
+      const target = document.querySelector(st.hl); if (target) target.classList.add('hl');
+    }
+    if ($('#skipTut')) $('#skipTut').onclick = () => { tut = null; startReal(); };
+    if ($('#prevStep')) $('#prevStep').onclick = () => { tut.pin = i - 1; coach(); };
+    if ($('#nextStep')) $('#nextStep').onclick = () => { tut.pin = i + 1 >= far ? null : i + 1; coach(); };
   }
 
   function submitFlow() {
@@ -246,7 +258,7 @@
     const q = new URLSearchParams(location.search);
     let f = force;
     if (!f && q.get('fault')) { const [id, mode] = q.get('fault').split(':'); f = { id, mode }; }
-    form = E.generate(seed, f); S = E.createSession(form); tut = practice ? { i: 0 } : null; trace = []; selected = null; pendingSwap = null; tool = 'hand';
+    form = E.generate(seed, f); S = E.createSession(form); tut = practice ? { i: 0, pin: null } : null; trace = []; selected = null; pendingSwap = null; tool = 'hand';
     mount();
     document.querySelectorAll('.overlay').forEach((o) => { if (o.id !== 'brief') o.remove(); });
     say(practice ? 'Practice: follow the steps above.' : 'Start by switching the conveyor and pump on with the hand tool.');
