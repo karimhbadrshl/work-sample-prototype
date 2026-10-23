@@ -1,4 +1,5 @@
-# Fault-finding, re-imagined: a diagnostic game scored on how you diagnose, not only what you pick
+# "Faulty Lines": Fault-finding, re-imagined
+## a diagnostic game scored on how you diagnose, not only what you pick
 
 ## ▶ [Open the live prototype](https://karimhbadrshl.github.io/work-sample-prototype/)
 
