@@ -10,7 +10,7 @@
   const STUDS = '<svg width="130" height="8" viewBox="0 0 130 8" aria-hidden="true">' + Array.from({ length: 11 }, (_, i) => `<circle cx="${4 + 12 * i}" cy="4" r="3" fill="#D9D4C7"/>`).join('') + '</svg>';
   const POS = { Q1: [35, 100], F1: [145, 100], PSU: [255, 100], S1: [365, 100], K1: [475, 100], SW1: [35, 250], KM1: [145, 250], SW2: [275, 250], KM2: [385, 250], M1: [35, 395, 100, 80], M2: [650, 150, 110, 80] };
 
-  let S = null, form = null, tool = 'hand', pendingSwap = null, trace = [], selected = null, awayAt = null;
+  let tut = null, S = null, form = null, tool = 'hand', pendingSwap = null, trace = [], selected = null, awayAt = null;
 
   const part = (id) => {
     const [x, y, w = 96, h = 80] = POS[id];
@@ -46,6 +46,7 @@
       <div class="top"><div><div class="kicker">${BRICK}<span>Field service · fault-finding · prototype</span></div><h1>Cell 3 will not run. Find the fault.</h1>
         <div class="muted">Operator report: nothing runs when started. Switch things on, test, ask the mentor, then name the failed part.</div></div>
         <div class="hud"><span class="chip">Form <b id="formId"></b></span><span class="chip">Test cost <b id="cost">0</b></span><button class="btn" id="newForm">Load another form</button></div></div>
+      <div id="coach" class="coach" role="region" aria-label="Guided practice" hidden></div>
       <div class="grid"><div>
         <div class="card scene" id="scene">${sceneSvg()}</div>
         <div class="tools" role="group" aria-label="Tools">
@@ -96,6 +97,7 @@
     tool = t; pendingSwap = null;
     document.querySelectorAll('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
     say({ hand: 'Hand: click a switch to operate it.', V: 'Voltmeter: click a part to read its output. Cost 1.', I: 'Clamp ammeter: click a motor. Cost 1.', SWAP: 'Spare part: click a part to swap it. Cost 3.' }[t]);
+    coach();
   }
   const say = (m) => { $('#status').textContent = m; };
   const L = (id) => E.label(form, id);
@@ -139,6 +141,7 @@
     $('#p-mentor').insertAdjacentHTML('beforeend', `<div class="msg you"><span class="who">You</span>${esc(q)}</div><div class="msg ai"><span class="who">AI mentor</span>${esc(r.text)}</div>`);
     $('#p-mentor').scrollTop = 1e6;
     $('#p-nb').insertAdjacentHTML('beforeend', `<p class="nb"><span class="n">--</span> Asked mentor: ${esc(q)}</p>`);
+    coach();
   }
 
   function paint() {
@@ -163,6 +166,35 @@
     $('#g-conv').setAttribute('class', o.M1 === 'running' ? 'running' : o.M1 === 'humming' ? 'humming' : '');
     $('#g-pump').setAttribute('class', o.M2 === 'running' ? 'running' : o.M2 === 'humming' ? 'humming' : '');
     $('#cost').textContent = S.cost;
+    coach();
+  }
+
+
+  // ---- Guided practice: a short walkthrough on a fixed practice fault (conveyor contactor open). Not recorded.
+  const steps = () => {
+    const T = form.tags, tested = (n) => S.tests.some((t) => t.test.type === 'V' && t.test.node === n);
+    return [
+      { h: 'Switch the conveyor on', t: `Hello, and thanks for trying this. Cell 3 has stopped and the operator says nothing runs. Let's start by switching things on. With the Hand tool selected, click the conveyor enable switch (${T.SW1}). Switching costs nothing.`, hl: '.part[data-id="SW1"]', done: () => S.state.SW1 },
+      { h: 'Now the pump', t: `Nice. Now click the pump enable switch (${T.SW2}) as well.`, hl: '.part[data-id="SW2"]', done: () => S.state.SW2 },
+      { h: 'Read the lamps and motors', t: `Look at the scene. Lamps H1 and H2 are lit, so power reaches the safety relay. The pump motor is running, but the conveyor motor is stopped. So the fault is somewhere on the conveyor line. Lamps and sounds are free clues. When you are ready, pick the Voltmeter below the scene.`, hl: '[data-tool="V"]', done: () => tool === 'V' },
+      { h: 'Test part-way along the line', t: `With the Voltmeter, click the conveyor enable switch (${T.SW1}) to read its output. Each reading costs 1; your running cost is at the top right. Good diagnosticians choose tests that rule out as much as possible.`, hl: '.part[data-id="SW1"]', done: () => tested('SW1') },
+      { h: 'Narrow it down', t: `24 V: power gets as far as ${T.SW1}. That leaves the contactor ${T.KM1} and the motor ${T.M1} downstream. Read the contactor ${T.KM1} next.`, hl: '.part[data-id="KM1"]', done: () => tested('KM1') },
+      { h: 'Meet the AI mentor', t: `0 V at ${T.KM1}, with 24 V going in. Before you decide, try the mentor in the right-hand panel. Ask what a healthy contactor needs, or ask "Which part is faulty?" to see what it will and will not do. The Reference guide tab holds the same specs.`, hl: '#q', done: () => S.log.some((e) => e.kind === 'mentor') },
+      { h: 'Name the failed part', t: `Power goes in to ${T.KM1} but nothing comes out, so the contactor is not passing it on. Choose it in the Failed part list, then press Submit diagnosis twice (the second press confirms).`, hl: '#dxsel', done: () => !!S.done },
+    ];
+  };
+  function coach() {
+    const el = $('#coach'); if (!el) return;
+    document.querySelectorAll('.hl').forEach((n) => n.classList.remove('hl'));
+    if (!tut) { el.hidden = true; return; }
+    const list = steps();
+    while (tut.i < list.length && list[tut.i].done()) tut.i++;
+    el.hidden = false;
+    if (tut.i >= list.length) { el.innerHTML = '<div class="kicker"><span>Practice complete</span></div><p>Well done. That is all there is to it.</p>'; return; }
+    const st = list[tut.i];
+    el.innerHTML = `<div class="kicker"><span>Guided practice · step ${tut.i + 1} of ${list.length}</span><button class="link" id="skipTut">Skip the practice</button></div><h2>${esc(st.h)}</h2><p>${esc(st.t)}</p>`;
+    $('#skipTut').onclick = () => { tut = null; startReal(); };
+    const target = document.querySelector(st.hl); if (target) target.classList.add('hl');
   }
 
   function submitFlow() {
@@ -173,54 +205,58 @@
   }
 
   function finish(id) {
+    const practice = !!tut;
     const r = S.submit(id, $('#why').value);
     const label = (n) => `${esc(L(n))}`;
     const rows = [['Accuracy', r.parts.accuracy, 50], ['Efficiency', r.parts.efficiency, 30], ['No wasted tests', r.parts.redundancy, 10], ['Fits the evidence', r.parts.consistency, 10]];
     const verdict = r.correct ? (r.justified ? 'Your evidence pointed to one part, and you named it.' : 'Right part, but your tests had not yet ruled out the others, so credit is halved. A lucky guess scores less than a diagnosis.') : 'That was not the failed part.';
     const flags = r.flags.length ? r.flags.map((f) => `<span class="tag flag">Flag: ${esc(f.replace(/_/g, ' '))}</span>`).join(' ') : '<span class="tag">No flags</span>';
     const ov = document.createElement('div'); ov.className = 'overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
-    ov.innerHTML = `<div class="modal"><div class="kicker">${BRICK}<span>Result · form ${esc(form.formId)}</span></div>
+    ov.innerHTML = `<div class="modal"><div class="kicker">${BRICK}<span>${practice ? 'Practice result' : 'Result · form ' + esc(form.formId)}</span></div>
       <div class="score" aria-label="Score ${r.total} out of 100">${r.total}<small> / 100</small></div><p>${verdict}</p>
       <p><b>The fault was ${label(form.fault.id)}: ${MODE_TEXT[form.fault.mode]}.</b> You named ${label(id)}.</p>
       ${rows.map(([n, v, m]) => `<div class="row"><span>${n}</span><div class="bar"><i style="width:${(100 * v) / m}%"></i></div><span class="mono">${v}/${m}</span></div>`).join('')}
       <h2 style="margin-top:14px">Your path</h2>
       <table class="t"><tr><th>#</th><th>Action</th><th>Parts still possible</th></tr>${trace.map((t, i) => `<tr><td>${i + 1}</td><td>${esc(t.label)}</td><td class="mono">${t.n}</td></tr>`).join('') || '<tr><td colspan="3">No actions taken.</td></tr>'}</table>
       <p class="muted">Test cost ${r.cost}; an efficient route needs ${r.policyCost}. ${r.nTests} tests, ${r.redundant} told you nothing new.</p>
-      <h2>Integrity record</h2><p>${flags}</p><p class="muted">${esc(r.review)}. Flags are prompts for a person to look at the record. They are not a verdict and never reject anyone automatically.</p>
-      <p><button class="btn primary" id="again">Try another form</button> <button class="btn" id="dl">Download session record</button> <button class="btn" id="close">Close</button></p></div>`;
+      ${practice ? `<h2>That was the practice</h2><p>Nicely done. The practice is not recorded and does not count. In the real task the fault is different and there are no hints, but the tools and the mentor work exactly the same way. Take your time.</p><p><button class="btn primary" id="again">Start the real task</button> <button class="btn" id="redo">Practise again</button></p></div>` : `<h2>Integrity record</h2><p>${flags}</p><p class="muted">${esc(r.review)}. Flags are prompts for a person to look at the record. They are not a verdict and never reject anyone automatically.</p>
+      <p><button class="btn primary" id="again">Try another form</button> <button class="btn" id="dl">Download session record</button> <button class="btn" id="close">Close</button></p></div>`}`;
     document.body.appendChild(ov);
-    $('#again', ov).onclick = () => { ov.remove(); start(Math.floor(Math.random() * 1e9)); };
-    $('#close', ov).onclick = () => ov.remove();
-    $('#dl', ov).onclick = () => { const b = new Blob([JSON.stringify({ form: form.formId, result: r, log: S.log, events: S.events }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `session-${form.formId}.json`; a.click(); };
+    $('#again', ov).onclick = () => { ov.remove(); if (practice) { tut = null; startReal(); } else start(Math.floor(Math.random() * 1e9)); };
+    if (practice) $('#redo', ov).onclick = () => { ov.remove(); startPractice(); };
+    if (!practice) { $('#close', ov).onclick = () => ov.remove();
+    $('#dl', ov).onclick = () => { const b = new Blob([JSON.stringify({ form: form.formId, result: r, log: S.log, events: S.events }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `session-${form.formId}.json`; a.click(); }; }
     $('#again', ov).focus();
   }
 
-  function briefing() {
+  function welcome() {
     const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'brief'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
-    ov.innerHTML = `<div class="modal"><div class="kicker">${BRICK}<span>Field service · fault-finding · prototype</span></div><h1>Before you start</h1>
-      <p>Packaging cell 3 has stopped. You are the technician. Find the part that has failed using as few tests as you sensibly can.</p>
-      <ul><li><b>Operate</b> the isolator, emergency stop and enable switches with the hand tool. Switching costs nothing.</li>
-      <li><b>Test</b> with the voltmeter, clamp ammeter or a spare part. Each test has a cost, shown at the top.</li>
-      <li><b>Ask</b> the AI mentor or read the reference guide for specs, meters and method. The mentor will not name the fault.</li>
-      <li>There is no visible countdown. You can use the keyboard throughout (Tab, Enter).</li></ul>
-      <h2>What is recorded</h2><p class="muted">Your switch settings, tests, mentor questions and timings, and whether you leave this window, copy text or paste into a field. A person reviews these only if something looks unusual. No score is ever rejected automatically.</p>
-      <p><button class="btn primary" id="go">Start</button></p></div>`;
+    ov.innerHTML = `<div class="modal"><div class="kicker">${BRICK}<span>Field service · fault-finding · prototype</span></div><h1>Welcome. Let's find a fault together.</h1>
+      <p>You are a maintenance technician and packaging cell 3 has stopped. Your job is to work out which part has failed, using as few tests as you sensibly can. There are no trick questions, and using the reference guide and the AI mentor is part of the job.</p>
+      <p>We will start with a short guided practice on a different fault. It takes about three minutes, shows you each tool in turn, and is not recorded or scored.</p>
+      <p class="muted">There is no visible countdown, and you can use the keyboard throughout (Tab, Enter). <b>What is recorded in the real task:</b> your switch settings, tests, mentor questions and timings, and whether you leave this window, copy text or paste into a field. A person reviews these only if something looks unusual. No one is rejected automatically.</p>
+      <p><button class="btn primary" id="go">Start the guided practice</button> <button class="btn" id="skip">Skip to the real task</button></p></div>`;
     document.body.appendChild(ov);
-    $('#go', ov).onclick = () => { ov.remove(); };
+    $('#go', ov).onclick = () => { ov.remove(); startPractice(); };
+    $('#skip', ov).onclick = () => { ov.remove(); };
     $('#go', ov).focus();
   }
 
-  function start(seed, force) {
+  function start(seed, force, practice) {
     const q = new URLSearchParams(location.search);
     let f = force;
     if (!f && q.get('fault')) { const [id, mode] = q.get('fault').split(':'); f = { id, mode }; }
-    form = E.generate(seed, f); S = E.createSession(form); trace = []; selected = null; pendingSwap = null; tool = 'hand';
+    form = E.generate(seed, f); S = E.createSession(form); tut = practice ? { i: 0 } : null; trace = []; selected = null; pendingSwap = null; tool = 'hand';
     mount();
     document.querySelectorAll('.overlay').forEach((o) => { if (o.id !== 'brief') o.remove(); });
-    say('Start by switching the conveyor and pump on with the hand tool.');
+    say(practice ? 'Practice: follow the steps above.' : 'Start by switching the conveyor and pump on with the hand tool.');
+    coach();
     window.__session = S;
   }
   const seedParam = new URLSearchParams(location.search).get('seed');
-  start(seedParam ? Number(seedParam) : Math.floor(Math.random() * 1e9));
-  briefing();
+  const realSeed = seedParam ? Number(seedParam) : Math.floor(Math.random() * 1e9);
+  const startReal = () => start(realSeed);
+  const startPractice = () => start(11, { id: 'KM1', mode: 'open' }, true);
+  startReal();
+  welcome();
 })();

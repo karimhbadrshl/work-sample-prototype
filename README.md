@@ -6,8 +6,8 @@
 
 **What to do when it opens**
 
-1. **Read the briefing and press Start.** You are a technician; a packaging cell has stopped.
-2. **Play one fault.** With the *Hand* tool, switch the conveyor and pump on (click the switches). Pick the *Voltmeter* and click parts to read their output; each reading costs 1, a spare part costs 3. Choose *Your diagnosis* at the right, press *Submit diagnosis* twice, and read the result: score, the fault, your path and an integrity record.
+1. **Take the guided practice (about three minutes).** A short walkthrough on a practice fault shows you each tool, one step at a time, and is not scored. You can skip it. Then the real task starts: a different fault, no hints.
+2. **Play the real fault.** With the *Hand* tool, switch the conveyor and pump on (click the switches). Pick the *Voltmeter* and click parts to read their output; each reading costs 1, a spare part costs 3. Choose *Your diagnosis* at the right, press *Submit diagnosis* twice, and read the result: score, the fault, your path and an integrity record.
 3. **Ask the AI mentor** (right panel). It explains parts, meters and method and tells you what a healthy part reads. Try asking it *"Which part is faulty?"*: it will not say. The *Reference guide* tab has the same specs without the chat.
 4. **Try another form.** *Load another form* gives a different fault with different part labels, so no two candidates share an answer key.
 

@@ -95,3 +95,13 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
 @keyframes dash { to { stroke-dashoffset: -18; } }
 @keyframes slide { from { transform: translateX(0); } to { transform: translateX(260px); } }
 @media (prefers-reduced-motion: reduce) { .running .spin, .humming .spin, .running .belt, .running .flow, .running .crates { animation: none; } }
+
+.coach { margin-top: 12px; border: 1px solid var(--ink); border-left-width: 6px; background: var(--raised); border-radius: 8px; padding: 10px 16px; }
+.coach h2 { margin: 4px 0 2px; }
+.coach p { margin: 2px 0 4px; }
+.coach .kicker { justify-content: space-between; }
+.link { border: 0; background: none; text-decoration: underline; color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 12px; }
+.part.hl .box { stroke: var(--blue); stroke-width: 4; animation: pulse 1.2s ease-in-out infinite; }
+.tool.hl, #q.hl, #dxsel.hl { outline: 3px solid var(--blue); outline-offset: 2px; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .part.hl .box, .tool.hl, #q.hl, #dxsel.hl { animation: none; } }
