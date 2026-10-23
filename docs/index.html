@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fault-finding prototype</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Rubik:wght@400;500&display=swap');</style>
+<style>
+:root {
+  --ground: #F2EFE6; --raised: #FBFAF6; --ink: #22252B; --muted: #62666E; --yellow: #B07A0C; --yellow-text: #8A5F07;
+  --blue: #2F5DA8; --red: #B8392C; --stud: #B9B2A2; --hair: #D9D4C7;
+  --sans: Rubik, "Segoe UI", Arial, sans-serif; --mono: "IBM Plex Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.45; }
+button, input, textarea, select { font: inherit; color: inherit; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 14px 18px 28px; }
+.kicker { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+h1 { font-size: 24px; font-weight: 500; margin: 4px 0 2px; }
+h2 { font-size: 16px; font-weight: 500; margin: 0 0 6px; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--hair); padding-bottom: 10px; }
+.hud { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-family: var(--mono); font-size: 13px; }
+.chip { border: 1px solid var(--hair); background: var(--raised); border-radius: 6px; padding: 4px 10px; }
+.chip b { font-weight: 500; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; margin-top: 14px; }
+@media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--raised); border: 1px solid var(--hair); border-radius: 8px; padding: 12px; }
+.scene { padding: 6px; }
+svg { display: block; }
+.scene svg { width: 100%; height: auto; }
+.btn { border: 1px solid var(--ink); background: var(--raised); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+.btn:hover { background: #fff; }
+.btn.primary { background: var(--ink); color: var(--raised); }
+.btn.primary:hover { background: #3a3e46; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; margin-top: 10px; }
+.tool { border: 1px solid var(--hair); background: var(--raised); border-radius: 6px; padding: 7px 12px; cursor: pointer; text-align: left; min-width: 128px; }
+.tool small { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.tool[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: #fff; }
+.readout { flex: 1; min-width: 220px; border: 1px solid var(--ink); border-radius: 6px; background: var(--ink); color: var(--raised); padding: 6px 12px; font-family: var(--mono); }
+.readout .big { font-size: 22px; letter-spacing: .02em; }
+.readout .sub { font-size: 12px; opacity: .8; }
+.status { margin-top: 8px; min-height: 22px; color: var(--muted); font-size: 14px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hair); margin: -4px 0 10px; }
+.tab { border: 0; background: none; padding: 8px 12px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.pane { height: 330px; overflow: auto; }
+.msg { margin: 0 0 8px; padding: 8px 10px; border-radius: 6px; font-size: 14px; }
+.msg.you { background: #fff; border: 1px solid var(--hair); }
+.msg.ai { background: var(--ground); border: 1px solid var(--hair); }
+.msg .who { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: block; margin-bottom: 2px; }
+.askrow { display: flex; gap: 8px; margin-top: 8px; }
+.askrow input { flex: 1; border: 1px solid var(--hair); border-radius: 6px; padding: 7px 10px; background: #fff; }
+details.g { border-bottom: 1px solid var(--hair); padding: 6px 0; }
+details.g summary { cursor: pointer; font-weight: 500; }
+details.g p { margin: 6px 0 2px; color: var(--muted); font-size: 14px; }
+.nb { font-size: 13px; font-family: var(--mono); margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px dashed var(--hair); }
+.nb .n { color: var(--muted); }
+.dx { margin-top: 12px; }
+.dx label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 3px; }
+.dx select, .dx input[type=text] { width: 100%; border: 1px solid var(--hair); border-radius: 6px; padding: 7px 10px; background: #fff; }
+.tag { font-family: var(--mono); font-size: 12px; padding: 1px 7px; border: 1px solid var(--hair); border-radius: 4px; color: var(--muted); margin-right: 6px; display: inline-block; }
+.tag.flag { border-color: var(--red); color: var(--red); }
+.overlay { position: fixed; inset: 0; background: rgba(34,37,43,.55); display: flex; align-items: flex-start; justify-content: center; padding: 28px 14px; overflow: auto; z-index: 10; }
+.modal { background: var(--raised); border: 1px solid var(--hair); border-radius: 10px; padding: 22px 26px; width: min(760px, 100%); }
+.modal h1 { margin-top: 8px; }
+.modal ul { padding-left: 20px; margin: 8px 0; }
+.score { font-family: var(--mono); font-size: 56px; color: var(--yellow); line-height: 1; margin: 8px 0 2px; }
+.score small { font-size: 20px; color: var(--muted); }
+.row { display: grid; grid-template-columns: 150px 1fr 56px; gap: 10px; align-items: center; margin: 6px 0; font-size: 14px; }
+.bar { height: 10px; background: var(--hair); border-radius: 5px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--ink); }
+table.t { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 6px; }
+table.t th, table.t td { border-bottom: 1px solid var(--hair); text-align: left; padding: 4px 6px; font-weight: 400; }
+table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; text-transform: uppercase; }
+.studs { margin-top: 18px; }
+/* scene */
+.part { cursor: pointer; }
+.part:hover .box { stroke: var(--ink); }
+.box { fill: var(--raised); stroke: var(--stud); stroke-width: 1.5; }
+.part.sel .box { stroke: var(--blue); stroke-width: 3; }
+.tg { font-family: var(--mono); font-size: 15px; font-weight: 500; fill: var(--ink); }
+.nm { font-family: var(--sans); font-size: 11px; fill: var(--muted); }
+.st { font-family: var(--mono); font-size: 11px; fill: var(--ink); }
+.wire { fill: none; stroke: var(--stud); stroke-width: 3; stroke-linejoin: round; }
+.zone { fill: none; stroke: var(--hair); stroke-width: 1.5; stroke-dasharray: 5 5; }
+.zt { font-family: var(--mono); font-size: 11px; fill: var(--muted); letter-spacing: .06em; }
+.lamp-on { fill: var(--blue); } .lamp-dim { fill: var(--blue); opacity: .35; } .lamp-off { fill: var(--raised); }
+.lamp { stroke: var(--ink); stroke-width: 1.5; }
+.spin { transform-box: fill-box; transform-origin: center; }
+.running .spin { animation: spin 1s linear infinite; }
+.humming .spin { animation: shake .12s linear infinite; }
+.belt { stroke: var(--ink); stroke-width: 3; stroke-dasharray: 10 8; }
+.running .belt, .running .flow { animation: dash .8s linear infinite; }
+.crate { fill: var(--stud); stroke: var(--ink); }
+.running .crates { animation: slide 5s linear infinite; }
+.flow { stroke: var(--blue); stroke-width: 4; stroke-dasharray: 8 8; fill: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shake { 0%, 100% { transform: translate(-1.5px, 0); } 50% { transform: translate(1.5px, 1px); } }
+@keyframes dash { to { stroke-dashoffset: -18; } }
+@keyframes slide { from { transform: translateX(0); } to { transform: translateX(260px); } }
+@media (prefers-reduced-motion: reduce) { .running .spin, .humming .spin, .running .belt, .running .flow, .running .crates { animation: none; } }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript>This prototype needs JavaScript.</noscript>
+<!-- Generated by tools/build_game.py from game/. Do not edit by hand. -->
+<script>
+/* Fault-finding engine: system model, fault generator, tests, scoring, AI-mentor mock, integrity flags.
+   Pure logic, no DOM. The browser page and the Node evaluation (game/eval.js) use this same file. */
+(function (root) {
+  'use strict';
+
+  // Supply tree: each node's output depends on its parent. Single fault per form.
+  const NODES = [
+    { id: 'MAINS', parent: null, kind: 'source', name: 'Mains inlet' },
+    { id: 'Q1', parent: 'MAINS', kind: 'isolator', name: 'Isolator', gate: 'Q1' },
+    { id: 'F1', parent: 'Q1', kind: 'fuse', name: 'Fuse', modes: ['open'] },
+    { id: 'PSU', parent: 'F1', kind: 'psu', name: 'Power supply', modes: ['open', 'low'] },
+    { id: 'S1', parent: 'PSU', kind: 'estop', name: 'Emergency stop', gate: 'S1', modes: ['open'] },
+    { id: 'K1', parent: 'S1', kind: 'relay', name: 'Safety relay', modes: ['open'] },
+    { id: 'SW1', parent: 'K1', kind: 'toggle', name: 'Conveyor enable switch', gate: 'SW1', modes: ['open'] },
+    { id: 'KM1', parent: 'SW1', kind: 'contactor', name: 'Conveyor contactor', modes: ['open'] },
+    { id: 'M1', parent: 'KM1', kind: 'motor', name: 'Conveyor motor', modes: ['open', 'seized'] },
+    { id: 'SW2', parent: 'K1', kind: 'toggle', name: 'Pump enable switch', gate: 'SW2', modes: ['open'] },
+    { id: 'KM2', parent: 'SW2', kind: 'contactor', name: 'Pump contactor', modes: ['open'] },
+    { id: 'M2', parent: 'KM2', kind: 'motor', name: 'Pump motor', modes: ['open', 'seized'] },
+  ];
+  const BY_ID = Object.fromEntries(NODES.map((n) => [n.id, n]));
+  const HYPS = [];
+  NODES.forEach((n) => (n.modes || []).forEach((m) => HYPS.push({ id: n.id, mode: m })));
+  const FAULTABLE = NODES.filter((n) => n.modes).map((n) => n.id);
+  const COST = { V: 1, I: 1, SWAP: 3 };
+  const INITIAL = { Q1: true, S1: true, SW1: false, SW2: false }; // S1 true = released
+  const ALL_ON = { Q1: true, S1: true, SW1: true, SW2: true };
+  const PULL_IN = 20; // volts: relays and contactors drop out below this
+
+  function solve(state, fault) {
+    const out = {};
+    for (const n of NODES) {
+      const vin = n.parent === null ? 230 : out[n.parent].v;
+      const f = fault && fault.id === n.id ? fault.mode : null;
+      let v = vin, i = 0, run = false, hum = false;
+      if (n.kind === 'source') v = 230;
+      if (n.gate && !state[n.gate]) v = 0;
+      if (f === 'open' && n.kind !== 'motor') v = 0;
+      if (n.kind === 'psu') v = vin >= 100 && f !== 'open' ? (f === 'low' ? 17 : 24) : 0;
+      if ((n.kind === 'relay' || n.kind === 'contactor') && vin < PULL_IN) v = 0;
+      if (n.kind === 'motor') {
+        v = vin;
+        const powered = v >= PULL_IN;
+        run = powered && f === null;
+        hum = powered && f === 'seized';
+        i = powered ? (f === 'seized' ? 9.8 : f === 'open' ? 0 : 2.1) : 0;
+      }
+      out[n.id] = { v, i, run, hum };
+    }
+    return out;
+  }
+
+  // Free observations: what the candidate can see and hear without spending test budget.
+  function observe(state, fault) {
+    const o = solve(state, fault);
+    const motor = (m) => (m.hum ? 'humming' : m.run ? 'running' : 'stopped');
+    return { H1: o.PSU.v >= PULL_IN ? 'on' : o.PSU.v > 0 ? 'dim' : 'off', H2: o.K1.v >= PULL_IN ? 'on' : 'off', M1: motor(o.M1), M2: motor(o.M2) };
+  }
+
+  // Paid tests. A test is {type:'V'|'I'|'SWAP', node}.
+  function measure(test, state, fault) {
+    const o = solve(state, fault);
+    if (test.type === 'V') return String(o[test.node].v);
+    if (test.type === 'I') return String(o[test.node].i);
+    return fault && fault.id === test.node ? 'fixed' : 'nochange';
+  }
+  function allTests() {
+    const t = [];
+    NODES.forEach((n) => { if (n.kind !== 'source') t.push({ type: 'V', node: n.id }); });
+    ['M1', 'M2'].forEach((m) => t.push({ type: 'I', node: m }));
+    FAULTABLE.forEach((id) => t.push({ type: 'SWAP', node: id }));
+    return t;
+  }
+  const TESTS = allTests();
+  const sig = (o) => JSON.stringify(o);
+
+  function consistent(h, rec) {
+    return rec.kind === 'obs' ? sig(observe(rec.state, h)) === sig(rec.result) : measure(rec.test, rec.state, h) === rec.result;
+  }
+  const comps = (hs) => new Set(hs.map((h) => h.id));
+
+  // Reference policy: minimax test cost to isolate one component from state ALL_ON (the "efficient technician").
+  const memo = new Map();
+  function opt(hs) {
+    if (comps(hs).size <= 1) return { cost: 0, test: null };
+    const key = hs.map((h) => h.id + h.mode).sort().join('|');
+    if (memo.has(key)) return memo.get(key);
+    let best = { cost: Infinity, test: null };
+    for (const t of TESTS) {
+      const parts = new Map();
+      hs.forEach((h) => { const r = measure(t, ALL_ON, h); (parts.get(r) || parts.set(r, []).get(r)).push(h); });
+      if (parts.size === 1) continue;
+      let worst = 0;
+      parts.forEach((p) => { worst = Math.max(worst, opt(p).cost); });
+      const c = COST[t.type] + worst;
+      if (c < best.cost) best = { cost: c, test: t };
+    }
+    memo.set(key, best);
+    return best;
+  }
+  // Hypotheses left after the free look at ALL_ON for a given true fault.
+  function afterFreeLook(fault) {
+    const r = sig(observe(ALL_ON, fault));
+    return HYPS.filter((h) => sig(observe(ALL_ON, h)) === r);
+  }
+  function policyPath(fault) {
+    let hs = afterFreeLook(fault), cost = 0;
+    const steps = [];
+    while (comps(hs).size > 1) {
+      const { test } = opt(hs);
+      if (!test) break;
+      const r = measure(test, ALL_ON, fault);
+      cost += COST[test.type]; steps.push(test);
+      hs = hs.filter((h) => measure(test, ALL_ON, h) === r);
+    }
+    return { cost, steps };
+  }
+
+  // ---- Form generator: a seed gives one fault and its own part labels, so there is no shared answer key.
+  function mulberry32(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function generate(seed, forceFault) {
+    const rnd = mulberry32(seed >>> 0);
+    const fault = forceFault || HYPS[Math.floor(rnd() * HYPS.length)];
+    const o = Math.floor(rnd() * 4);
+    const tags = { MAINS: 'Mains', Q1: 'Q1', F1: 'F' + (1 + o), PSU: 'PSU1', S1: 'S' + (1 + o), K1: 'K' + (1 + o), SW1: 'SW' + (1 + o), SW2: 'SW' + (2 + o), KM1: 'KM' + (1 + o), KM2: 'KM' + (2 + o), M1: 'M' + (1 + o), M2: 'M' + (2 + o) };
+    return { seed, formId: 'FF-' + (seed >>> 0).toString(36).toUpperCase().padStart(4, '0'), fault, tags };
+  }
+  const label = (form, id) => `${BY_ID[id].name} ${form.tags[id]}`;
+
+  // ---- AI mentor (mock). It is given the guide and the question only, never the fault: it cannot leak what it does not know.
+  function guide(tags) {
+    const T = tags;
+    const L = (name, tag) => `${name} ${tag}`;
+    return [
+      { id: 'method', keys: ['method', 'approach', 'strategy', 'where', 'start', 'how do i', 'how to', 'begin', 'stuck', 'help'],
+        title: 'Method', text: 'Work from what you can see to what you can measure. Each test narrows where the fault can be. A reading at a point in the supply chain tells you whether the fault is upstream or downstream of it, so a test near the middle of the remaining chain rules out more than one at the ends. Free observations (lamps, motors) cost nothing; meter readings cost 1, a spare swap costs 3.' },
+      { id: 'meter', keys: ['meter', 'voltmeter', 'measure', 'probe', 'clamp', 'ammeter', 'amps', 'current', 'reading', 'tool'],
+        title: 'Using the meters', text: `Voltmeter: pick it, then click any part to read the voltage at its output terminal (mains side is AC, everything after ${T.PSU} is 24 V DC). Clamp ammeter: works on the motor leads only. A switch that is off or an engaged emergency stop gives 0 V by design, so check switch positions before you read anything.` },
+      { id: 'lamps', keys: ['lamp', 'light', 'h1', 'h2', 'indicator', 'led'],
+        title: 'Indicator lamps', text: `H1 shows the ${T.PSU} output: lit at 20 V or more, dim between 0 and 20 V, dark at 0 V. H2 shows the ${T.K1} output: lit only when the relay has pulled in. A lamp tells you the voltage at one point only.` },
+      { id: 'swap', keys: ['swap', 'spare', 'replace', 'change part'],
+        title: 'Spare parts', text: 'A known-good spare can be swapped into any part except the isolator and the enable switches you can already operate. It costs 3 and tells you only whether that one part was the cause. It is a confirmation tool, not a search tool.' },
+      { id: 'safety', keys: ['safe', 'safety', 'lockout', 'danger', 'shock'],
+        title: 'Safety', text: 'On site you would lock out and verify dead before touching anything. In this simulator you may probe live parts.' },
+      { id: 'hum', keys: ['hum', 'noise', 'sound', 'buzz', 'smell'],
+        title: 'Motor sounds', text: 'A motor with power at its terminals that hums but does not turn is mechanically stuck. A motor with power and no sound and no current has an open winding or lead.' },
+      { id: 'Q1', keys: [T.Q1.toLowerCase(), 'isolator', 'disconnect'], title: L('Isolator', T.Q1), text: 'Manual isolator. ON: 230 V AC passes. OFF: 0 V downstream. Off is not a fault.' },
+      { id: 'F1', keys: [T.F1.toLowerCase(), 'fuse'], title: L('Fuse', T.F1), text: `6.3 A slow-blow fuse. Healthy: 230 V AC at its output with ${T.Q1} on. A blown fuse passes no voltage.` },
+      { id: 'PSU', keys: [T.PSU.toLowerCase(), 'psu', 'power supply', 'transformer'], title: L('Power supply', T.PSU), text: '230 V AC in, 24 V DC out. Healthy output 21.6 to 26.4 V. Relays and contactors need 20 V or more to pull in, so a supply that sags below 20 V can look like a dead relay downstream.' },
+      { id: 'S1', keys: [T.S1.toLowerCase(), 'estop', 'e-stop', 'emergency'], title: L('Emergency stop', T.S1), text: 'Normally-closed mushroom button. Released: 24 V passes. Pressed in: 0 V downstream, which is a normal state, not a fault. Twist to release.' },
+      { id: 'K1', keys: [T.K1.toLowerCase(), 'relay', 'safety relay'], title: L('Safety relay', T.K1), text: 'Pulls in when its input is 20 V or more and the emergency stop is released. Healthy output equals its input (24 V). H2 shows its output.' },
+      { id: 'SW1', keys: [T.SW1.toLowerCase(), 'conveyor enable', 'enable switch'], title: L('Conveyor enable switch', T.SW1), text: 'Toggle that passes 24 V to the conveyor contactor when ON.' },
+      { id: 'SW2', keys: [T.SW2.toLowerCase(), 'pump enable'], title: L('Pump enable switch', T.SW2), text: 'Toggle that passes 24 V to the pump contactor when ON.' },
+      { id: 'KM1', keys: [T.KM1.toLowerCase(), 'conveyor contactor', 'contactor'], title: L('Conveyor contactor', T.KM1), text: 'Pulls in at 20 V or more at its coil feed and passes 24 V to the conveyor motor.' },
+      { id: 'KM2', keys: [T.KM2.toLowerCase(), 'pump contactor'], title: L('Pump contactor', T.KM2), text: 'Pulls in at 20 V or more at its coil feed and passes 24 V to the pump motor.' },
+      { id: 'M1', keys: [T.M1.toLowerCase(), 'conveyor motor', 'conveyor', 'motor'], title: L('Conveyor motor', T.M1), text: '24 V DC motor. Healthy: 24 V at terminals, 2.1 A run current, turns. Seized rotor: 24 V at terminals, about 9.8 A, hums. Open winding: 24 V at terminals, 0 A.' },
+      { id: 'M2', keys: [T.M2.toLowerCase(), 'pump motor', 'pump'], title: L('Pump motor', T.M2), text: '24 V DC motor, same ratings as the conveyor motor: 2.1 A run current when healthy, about 9.8 A seized, 0 A with an open winding.' },
+    ];
+  }
+
+  const RX_INJECT = /ignore (all|any|previous|prior|your)|system prompt|you are now|pretend|developer mode|jailbreak|reveal (your|the) (prompt|instructions)/i;
+  const RX_VERDICT = /\b(which|what)\b[^?]*\b(faulty|broken|failed|failing|dead|bad|culprit|fault|problem|cause|wrong)\b|\bis\b[^?]*\b(faulty|broken|failed|dead|bad|blown|healthy|okay|ok|working|good|the fault|the cause|the problem)\b|\b(tell|give|show) me (the )?(answer|fault|solution)|\bjust tell\b|\bam i right\b|\bis it\b|\bwhich (part|component|one)\b[^?]*\b(swap|replace|change|fix|check|test|look)/i;
+  const RX_SPEC = /\b(expected|normal|nominal|spec|specification|rating|should (read|be)|healthy (value|reading|voltage|current))\b/i;
+
+  function mentor(question, tags) {
+    const q = String(question || '').trim();
+    if (!q) return { intent: 'empty', flag: null, text: 'Ask about a part, a meter, a lamp, or how to approach the fault.' };
+    if (RX_INJECT.test(q)) return { intent: 'injection', flag: 'mentor_injection_attempt', text: 'I only help with this cell: parts, meters, lamps and method. I cannot change my instructions.' };
+    if (RX_VERDICT.test(q) && !RX_SPEC.test(q)) return { intent: 'verdict', flag: 'mentor_answer_seeking', text: `I cannot say which part is at fault or confirm a guess; that is the task. I can tell you what a healthy part reads, how the meters work, or how to narrow down a fault. Try asking, for example, what the fuse ${tags.F1} should read.` };
+    const ql = q.toLowerCase();
+    let best = null, bestScore = 0;
+    for (const g of guide(tags)) {
+      const s = g.keys.reduce((a, k) => a + (ql.includes(k) ? (k.length > 3 ? 2 : 1) : 0), 0);
+      if (s > bestScore) { best = g; bestScore = s; }
+    }
+    if (!best) return { intent: 'none', flag: null, text: `I did not catch that. I can help with a part (use its tag, for example ${tags.F1}), the meters, the lamps, spare parts or method.` };
+    return { intent: 'info', flag: null, ref: best.id, text: best.title + ': ' + best.text };
+  }
+
+  // ---- Session: records every action, keeps the hypothesis set, scores, flags.
+  function createSession(form, opts) {
+    const now = (opts && opts.now) || (() => Date.now());
+    const t0 = now();
+    const state = Object.assign({}, INITIAL);
+    const recs = [];
+    const log = [];
+    const events = [];
+    const tests = [];
+    let cost = 0, redundant = 0, answerSeeks = 0, injects = 0, done = null;
+    const stamp = () => Math.round((now() - t0) / 100) / 10;
+    const addObs = () => recs.push({ kind: 'obs', state: Object.assign({}, state), result: observe(state, form.fault) });
+    addObs();
+    const hyps = () => HYPS.filter((h) => recs.every((r) => consistent(h, r)));
+
+    const S = {
+      form, state, log, events, tests,
+      observation: () => observe(state, form.fault),
+      hypotheses: hyps,
+      get cost() { return cost; },
+      get done() { return done; },
+      setSwitch(k, val) {
+        if (done || state[k] === val) return null;
+        state[k] = val; addObs();
+        events.push({ t: stamp(), type: 'action' });
+        const entry = { t: stamp(), kind: 'switch', switch: k, value: val, obs: observe(state, form.fault) };
+        log.push(entry); return entry;
+      },
+      test(t) {
+        if (done) return null;
+        const result = measure(t, state, form.fault);
+        const isRedundant = new Set(hyps().map((h) => measure(t, state, h))).size <= 1;
+        if (isRedundant) redundant++;
+        recs.push({ kind: 'test', test: t, state: Object.assign({}, state), result });
+        cost += COST[t.type];
+        events.push({ t: stamp(), type: 'action' });
+        const entry = { t: stamp(), kind: 'test', test: t, result, redundant: isRedundant, cost: COST[t.type] };
+        tests.push(entry); log.push(entry); return entry;
+      },
+      ask(q) {
+        const r = mentor(q, form.tags);
+        if (r.flag === 'mentor_answer_seeking') answerSeeks++;
+        if (r.flag === 'mentor_injection_attempt') injects++;
+        events.push({ t: stamp(), type: 'mentor' });
+        log.push({ t: stamp(), kind: 'mentor', q, intent: r.intent });
+        return r;
+      },
+      event(type, data) { events.push(Object.assign({ t: stamp(), type }, data || {})); },
+      submit(answerId, reason) {
+        if (done) return done;
+        const ids = comps(hyps());
+        const correct = answerId === form.fault.id;
+        const justified = ids.size === 1;
+        const inSet = ids.has(answerId);
+        const pp = policyPath(form.fault);
+        const excess = Math.max(0, cost - pp.cost);
+        const nTests = tests.length;
+        const accuracy = correct ? (justified ? 50 : 25) : 0;
+        const efficiency = correct && justified ? Math.round(30 * Math.max(0, 1 - excess / 8)) : 0;
+        const redundancy = correct && justified ? Math.round(10 * (1 - (nTests ? redundant / nTests : 0))) : 0;
+        const consistency = inSet ? 10 : 0;
+        const elapsed = stamp();
+        const flags = integrity({ events, elapsed, correct, justified, answerSeeks, injects });
+        done = { total: accuracy + efficiency + redundancy + consistency, parts: { accuracy, efficiency, redundancy, consistency },
+          correct, justified, inSet, cost, policyCost: pp.cost, excess, nTests, redundant, elapsed, answer: answerId, reason: reason || '',
+          flags, review: flags.length ? 'Human review recommended' : 'No review needed', remaining: [...ids] };
+        return done;
+      },
+    };
+    return S;
+  }
+
+  // Integrity flags are evidence for a human reviewer, never an automatic decision.
+  function integrity(x) {
+    const f = [];
+    if (x.events.some((e) => e.type === 'paste')) f.push('paste_into_answer_or_mentor');
+    if (x.events.some((e) => e.type === 'copy')) f.push('copied_task_text');
+    const blur = x.events.filter((e) => e.type === 'blur').length;
+    const away = x.events.filter((e) => e.type === 'focus').reduce((a, e) => a + (e.awayFor || 0), 0);
+    if (blur >= 3 || away > 30) f.push('left_window_repeatedly');
+    const acts = x.events.filter((e) => e.type === 'action').map((e) => e.t);
+    const gaps = acts.slice(1).map((t, i) => t - acts[i]).sort((a, b) => a - b);
+    const medianGap = gaps.length ? gaps[Math.floor(gaps.length / 2)] : null;
+    if (x.elapsed < 20 || (medianGap !== null && medianGap < 0.4)) f.push('implausible_speed');
+    if (x.answerSeeks >= 2) f.push('mentor_answer_seeking');
+    if (x.injects >= 1) f.push('mentor_injection_attempt');
+    if (x.correct && !x.justified) f.push('correct_answer_not_supported_by_evidence');
+    return f;
+  }
+
+  const api = { NODES, BY_ID, HYPS, FAULTABLE, TESTS, COST, INITIAL, ALL_ON, solve, observe, measure, consistent, opt, policyPath, afterFreeLook, generate, label, mentor, guide, createSession, integrity };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Engine = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Page: scene, tools, AI mentor, guide, notebook, briefing and results. Uses window.Engine. */
+(function () {
+  'use strict';
+  const E = window.Engine;
+  const $ = (s, r) => (r || document).querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const SHORT = { Q1: 'Isolator', F1: 'Fuse', PSU: 'Power supply', S1: 'E-stop', K1: 'Safety relay', SW1: 'Conveyor on', SW2: 'Pump on', KM1: 'Conv. contactor', KM2: 'Pump contactor', M1: 'Conveyor motor', M2: 'Pump motor' };
+  const MODE_TEXT = { open: 'open circuit', low: 'output sagging to 17 V', seized: 'seized rotor' };
+  const BRICK = '<svg width="34" height="22" viewBox="0 0 34 22" aria-hidden="true"><g fill="#B07A0C"><rect x="0" y="5" width="34" height="17" rx="2"/><rect x="5" y="0" width="8" height="6" rx="1"/><rect x="21" y="0" width="8" height="6" rx="1"/><\/g><\/svg>';
+  const STUDS = '<svg width="130" height="8" viewBox="0 0 130 8" aria-hidden="true">' + Array.from({ length: 11 }, (_, i) => `<circle cx="${4 + 12 * i}" cy="4" r="3" fill="#D9D4C7"/>`).join('') + '<\/svg>';
+  const POS = { Q1: [35, 100], F1: [145, 100], PSU: [255, 100], S1: [365, 100], K1: [475, 100], SW1: [35, 250], KM1: [145, 250], SW2: [275, 250], KM2: [385, 250], M1: [35, 395, 100, 80], M2: [650, 150, 110, 80] };
+
+  let S = null, form = null, tool = 'hand', pendingSwap = null, trace = [], selected = null, awayAt = null;
+
+  const part = (id) => {
+    const [x, y, w = 96, h = 80] = POS[id];
+    return `<g class="part" data-id="${id}" role="button" tabindex="0"><rect class="box" x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
+      <text class="tg" x="${x + 8}" y="${y + 20}" data-tag="${id}"><\/text><text class="nm" x="${x + 8}" y="${y + 34}">${SHORT[id]}<\/text>
+      <text class="st" x="${x + 8}" y="${y + h - 8}" data-st="${id}"><\/text>${decor(id, x, y, w, h)}<\/g>`;
+  };
+  function decor(id, x, y, w, h) {
+    const cx = x + w / 2;
+    if (id === 'Q1' || id === 'SW1' || id === 'SW2') return `<line data-lever="${id}" x1="${cx}" y1="${y + 56}" x2="${cx}" y2="${y + 40}" stroke="#22252B" stroke-width="5" stroke-linecap="round"/><circle cx="${cx}" cy="${y + 56}" r="5" fill="#22252B"/>`;
+    if (id === 'S1') return `<circle data-estop="1" cx="${cx}" cy="${y + 52}" r="13" fill="#22252B"/><circle cx="${cx}" cy="${y + 52}" r="13" fill="none" stroke="#B07A0C" stroke-width="0"/>`;
+    if (id === 'M1' || id === 'M2') { const fx = x + w - 24; return `<g class="spin"><circle cx="${fx}" cy="${y + 52}" r="13" fill="none" stroke="#22252B" stroke-width="2"/><path d="M${fx} ${y + 39} V${y + 65} M${fx - 13} ${y + 52} H${fx + 13}" stroke="#22252B" stroke-width="3"/><\/g>`; }
+    return '';
+  }
+  const lamp = (id, cx, cy) => `<g><circle class="lamp lamp-off" data-lamp="${id}" cx="${cx}" cy="${cy}" r="9"/><text class="st" x="${cx + 14}" y="${cy + 4}" data-lamptxt="${id}"><\/text><\/g>`;
+
+  function sceneSvg() {
+    return `<svg viewBox="0 40 900 500" role="group" aria-label="Packaging cell 3: control cabinet, conveyor and pump skid">
+      <rect class="zone" x="15" y="55" width="570" height="300" rx="10"/><text class="zt" x="28" y="75">CONTROL CABINET · 230 V MAINS IN AT LEFT<\/text>
+      <rect class="zone" x="15" y="370" width="570" height="150" rx="10"/><text class="zt" x="150" y="388">CONVEYOR<\/text>
+      <rect class="zone" x="610" y="55" width="275" height="300" rx="10"/><text class="zt" x="622" y="75">PUMP SKID<\/text>
+      <path class="wire" d="M15 140H35M131 140H145M241 140H255M351 140H365M461 140H475M520 180V215H83M323 215V250M131 290H145M371 290H385M193 330V365H85V395M481 290H600V190H650M760 190H800"/>
+      
+      ${['Q1', 'F1', 'PSU', 'S1', 'K1', 'SW1', 'KM1', 'SW2', 'KM2'].map(part).join('')}
+      ${lamp('H1', 280, 90)}${lamp('H2', 500, 90)}
+      <g id="g-conv">${part('M1')}<line class="belt" x1="150" y1="440" x2="580" y2="440"/><g class="crates"><rect class="crate" x="170" y="410" width="34" height="28" rx="3"/><rect class="crate" x="300" y="410" width="34" height="28" rx="3"/><\/g><\/g>
+      <g id="g-pump">${part('M2')}<rect x="800" y="110" width="70" height="170" rx="4" fill="#FBFAF6" stroke="#B9B2A2" stroke-width="1.5"/><rect x="802" y="190" width="66" height="88" fill="#2F5DA8" opacity=".25"/><path class="flow" d="M760 190H800"/><text class="nm" x="806" y="300">Tank<\/text><\/g>
+    <\/svg>`;
+  }
+
+  function mount() {
+    $('#app').innerHTML = `<div class="wrap">
+      <div class="top"><div><div class="kicker">${BRICK}<span>Field service · fault-finding · prototype<\/span><\/div><h1>Cell 3 will not run. Find the fault.<\/h1>
+        <div class="muted">Operator report: nothing runs when started. Switch things on, test, ask the mentor, then name the failed part.<\/div><\/div>
+        <div class="hud"><span class="chip">Form <b id="formId"><\/b><\/span><span class="chip">Test cost <b id="cost">0<\/b><\/span><button class="btn" id="newForm">Load another form<\/button><\/div><\/div>
+      <div class="grid"><div>
+        <div class="card scene" id="scene">${sceneSvg()}<\/div>
+        <div class="tools" role="group" aria-label="Tools">
+          <button class="tool" data-tool="hand" aria-pressed="true">Hand<small>operate switches · cost 0<\/small><\/button>
+          <button class="tool" data-tool="V" aria-pressed="false">Voltmeter<small>read output · cost 1<\/small><\/button>
+          <button class="tool" data-tool="I" aria-pressed="false">Clamp ammeter<small>motors only · cost 1<\/small><\/button>
+          <button class="tool" data-tool="SWAP" aria-pressed="false">Spare part<small>swap and see · cost 3<\/small><\/button>
+          <div class="readout" aria-live="polite"><div class="sub">METER<\/div><div class="big" id="ro">no reading<\/div><div class="sub" id="ros">Pick a meter, then click a part.<\/div><\/div><\/div>
+        <div class="status" id="status" aria-live="polite"><\/div>
+      <\/div><div class="card"><div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="mentor" aria-selected="true">AI mentor<\/button><button class="tab" role="tab" data-tab="guide" aria-selected="false">Reference guide<\/button><button class="tab" role="tab" data-tab="nb" aria-selected="false">Notebook<\/button><\/div>
+        <div class="pane" id="p-mentor"><\/div><div class="pane" id="p-guide" hidden><\/div><div class="pane" id="p-nb" hidden><\/div>
+        <div class="askrow" id="askrow"><input id="q" type="text" maxlength="200" placeholder="Ask about a part, a meter or method" aria-label="Ask the AI mentor"><button class="btn" id="ask">Ask<\/button><\/div>
+        <div class="dx"><h2>Your diagnosis<\/h2><label for="dxsel">Failed part<\/label><select id="dxsel"><\/select>
+          <label for="why">Why? One line, optional<\/label><input type="text" id="why" maxlength="200">
+          <p><button class="btn primary" id="submit">Submit diagnosis<\/button> <span class="muted" id="confirmNote"><\/span><\/p><\/div><\/div><\/div>
+      <div class="studs">${STUDS}<div class="muted" style="font-size:12px;margin-top:4px">Prototype. Synthetic cell, no real candidate data. The AI mentor runs as a rules-based mock in this demo.<\/div><\/div><\/div>`;
+    $('#dxsel').innerHTML = '<option value="">Choose a part…<\/option>' + E.FAULTABLE.map((id) => `<option value="${id}">${esc(E.label(form, id))}<\/option>`).join('');
+    $('#p-guide').innerHTML = E.guide(form.tags).map((g) => `<details class="g"><summary>${esc(g.title)}<\/summary><p>${esc(g.text)}<\/p><\/details>`).join('');
+    $('#p-mentor').innerHTML = '<div class="msg ai"><span class="who">AI mentor<\/span>I can explain parts, meters, lamps and method, and tell you what a healthy part reads. I will not name the fault or confirm a guess.<\/div>';
+    $('#formId').textContent = form.formId;
+    bind();
+    paint();
+  }
+
+  function bind() {
+    $('#scene').addEventListener('click', (e) => { const p = e.target.closest('.part'); if (p) act(p.dataset.id); });
+    $('#scene').addEventListener('keydown', (e) => { const p = e.target.closest('.part'); if (p && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); act(p.dataset.id); } });
+    document.querySelectorAll('.tool').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
+    document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === b)));
+      ['mentor', 'guide', 'nb'].forEach((n) => { $('#p-' + n).hidden = n !== b.dataset.tab; });
+      $('#askrow').hidden = b.dataset.tab !== 'mentor';
+    }));
+    $('#ask').addEventListener('click', ask);
+    $('#q').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+    ['#q', '#why'].forEach((s) => $(s).addEventListener('paste', () => S.event('paste', { field: s })));
+    $('#submit').addEventListener('click', submitFlow);
+    $('#newForm').addEventListener('click', () => start(Math.floor(Math.random() * 1e9)));
+  }
+  document.addEventListener('copy', () => S && !S.done && S.event('copy'));
+  document.addEventListener('visibilitychange', () => {
+    if (!S || S.done) return;
+    if (document.hidden) { awayAt = Date.now(); S.event('blur'); } else { S.event('focus', { awayFor: awayAt ? Math.round((Date.now() - awayAt) / 1000) : 0 }); awayAt = null; }
+  });
+
+  function setTool(t) {
+    tool = t; pendingSwap = null;
+    document.querySelectorAll('.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
+    say({ hand: 'Hand: click a switch to operate it.', V: 'Voltmeter: click a part to read its output. Cost 1.', I: 'Clamp ammeter: click a motor. Cost 1.', SWAP: 'Spare part: click a part to swap it. Cost 3.' }[t]);
+  }
+  const say = (m) => { $('#status').textContent = m; };
+  const L = (id) => E.label(form, id);
+  const fmtObs = (o) => `H1 ${o.H1}, H2 ${o.H2}, ${form.tags.M1} ${o.M1}, ${form.tags.M2} ${o.M2}`;
+
+  function act(id) {
+    if (S.done) return;
+    selected = id;
+    const gate = { Q1: 'Q1', S1: 'S1', SW1: 'SW1', SW2: 'SW2' }[id];
+    if (tool === 'hand') {
+      if (!gate) { say(`${L(id)}: use a meter or spare to test this part.`); return paint(); }
+      const e = S.setSwitch(gate, !S.state[gate]);
+      const word = gate === 'S1' ? (S.state.S1 ? 'released' : 'pressed in') : (S.state[gate] ? 'ON' : 'OFF');
+      say(`${L(id)} ${word}. Now: ${fmtObs(S.observation())}.`); track(`${form.tags[id]} ${word}`); return paint();
+    }
+    if (tool === 'I' && id !== 'M1' && id !== 'M2') { say('The clamp ammeter works on the motor leads only.'); return paint(); }
+    if (tool === 'SWAP') {
+      if (!E.FAULTABLE.includes(id)) { say(`${L(id)}: no spare held for this part.`); return paint(); }
+      if (pendingSwap !== id) { pendingSwap = id; say(`Swap ${L(id)}? Click it again to confirm (cost 3).`); return paint(); }
+      pendingSwap = null;
+    }
+    const t = { type: tool, node: id };
+    const r = S.test(t);
+    let txt;
+    if (tool === 'V') { const v = Number(r.result).toFixed(1); txt = `${v} V ${['Q1', 'F1'].includes(id) ? 'AC' : 'DC'}`; ro(txt, `Voltmeter · ${L(id)} output`); }
+    else if (tool === 'I') { txt = `${Number(r.result).toFixed(1)} A`; ro(txt, `Clamp · ${L(id)} lead`); }
+    else { txt = r.result === 'fixed' ? 'cell runs: this part was the cause' : 'no change: original part refitted'; ro(r.result === 'fixed' ? 'FIXED' : 'NO CHANGE', `Spare · ${L(id)}`); }
+    say(`${L(id)}: ${txt}.${r.redundant ? ' This did not tell you anything new.' : ''}`);
+    track(`${{ V: 'Voltmeter', I: 'Clamp', SWAP: 'Spare' }[tool]} at ${form.tags[id]}: ${txt}`);
+    paint();
+  }
+  const ro = (big, sub) => { $('#ro').textContent = big; $('#ros').textContent = sub; };
+  function track(label) {
+    trace.push({ label, n: new Set(S.hypotheses().map((h) => h.id)).size });
+    $('#p-nb').insertAdjacentHTML('beforeend', `<p class="nb"><span class="n">${String(trace.length).padStart(2, '0')}<\/span> ${esc(label)}<\/p>`);
+  }
+
+  function ask() {
+    const q = $('#q').value.trim(); if (!q || S.done) return;
+    const r = S.ask(q); $('#q').value = '';
+    $('#p-mentor').insertAdjacentHTML('beforeend', `<div class="msg you"><span class="who">You<\/span>${esc(q)}<\/div><div class="msg ai"><span class="who">AI mentor<\/span>${esc(r.text)}<\/div>`);
+    $('#p-mentor').scrollTop = 1e6;
+    $('#p-nb').insertAdjacentHTML('beforeend', `<p class="nb"><span class="n">--<\/span> Asked mentor: ${esc(q)}<\/p>`);
+  }
+
+  function paint() {
+    const st = S.state, o = S.observation();
+    document.querySelectorAll('.part').forEach((p) => p.classList.toggle('sel', p.dataset.id === selected));
+    Object.keys(POS).forEach((id) => {
+      const t = $(`[data-tag="${id}"]`), s = $(`[data-st="${id}"]`), p = $(`.part[data-id="${id}"]`);
+      t.textContent = form.tags[id];
+      let w = '';
+      if (id === 'Q1' || id === 'SW1' || id === 'SW2') w = st[id] ? 'ON' : 'OFF';
+      if (id === 'S1') w = st.S1 ? 'RELEASED' : 'PRESSED';
+      if (id === 'M1' || id === 'M2') w = o[id].toUpperCase();
+      s.textContent = w;
+      p.setAttribute('aria-label', `${L(id)}${w ? ', ' + w.toLowerCase() : ''}`);
+    });
+    ['Q1', 'SW1', 'SW2'].forEach((id) => {
+      const l = $(`[data-lever="${id}"]`), [x, y, w = 96] = POS[id], cx = x + w / 2;
+      l.setAttribute('x2', st[id] ? cx : cx - 14); l.setAttribute('y2', st[id] ? y + 40 : y + 44);
+    });
+    $('[data-estop]').setAttribute('r', st.S1 ? 13 : 9);
+    ['H1', 'H2'].forEach((h) => { $(`[data-lamp="${h}"]`).setAttribute('class', `lamp lamp-${o[h]}`); $(`[data-lamptxt="${h}"]`).textContent = `${h} ${o[h].toUpperCase()}`; });
+    $('#g-conv').setAttribute('class', o.M1 === 'running' ? 'running' : o.M1 === 'humming' ? 'humming' : '');
+    $('#g-pump').setAttribute('class', o.M2 === 'running' ? 'running' : o.M2 === 'humming' ? 'humming' : '');
+    $('#cost').textContent = S.cost;
+  }
+
+  function submitFlow() {
+    const v = $('#dxsel').value;
+    if (!v) { $('#confirmNote').textContent = 'Choose a part first.'; return; }
+    if (!$('#submit').dataset.arm) { $('#submit').dataset.arm = '1'; $('#submit').textContent = 'Confirm: this is final'; $('#confirmNote').textContent = `You are naming ${L(v)}.`; return; }
+    finish(v);
+  }
+
+  function finish(id) {
+    const r = S.submit(id, $('#why').value);
+    const label = (n) => `${esc(L(n))}`;
+    const rows = [['Accuracy', r.parts.accuracy, 50], ['Efficiency', r.parts.efficiency, 30], ['No wasted tests', r.parts.redundancy, 10], ['Fits the evidence', r.parts.consistency, 10]];
+    const verdict = r.correct ? (r.justified ? 'Your evidence pointed to one part, and you named it.' : 'Right part, but your tests had not yet ruled out the others, so credit is halved. A lucky guess scores less than a diagnosis.') : 'That was not the failed part.';
+    const flags = r.flags.length ? r.flags.map((f) => `<span class="tag flag">Flag: ${esc(f.replace(/_/g, ' '))}<\/span>`).join(' ') : '<span class="tag">No flags<\/span>';
+    const ov = document.createElement('div'); ov.className = 'overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    ov.innerHTML = `<div class="modal"><div class="kicker">${BRICK}<span>Result · form ${esc(form.formId)}<\/span><\/div>
+      <div class="score" aria-label="Score ${r.total} out of 100">${r.total}<small> / 100<\/small><\/div><p>${verdict}<\/p>
+      <p><b>The fault was ${label(form.fault.id)}: ${MODE_TEXT[form.fault.mode]}.<\/b> You named ${label(id)}.<\/p>
+      ${rows.map(([n, v, m]) => `<div class="row"><span>${n}<\/span><div class="bar"><i style="width:${(100 * v) / m}%"><\/i><\/div><span class="mono">${v}/${m}<\/span><\/div>`).join('')}
+      <h2 style="margin-top:14px">Your path<\/h2>
+      <table class="t"><tr><th>#<\/th><th>Action<\/th><th>Parts still possible<\/th><\/tr>${trace.map((t, i) => `<tr><td>${i + 1}<\/td><td>${esc(t.label)}<\/td><td class="mono">${t.n}<\/td><\/tr>`).join('') || '<tr><td colspan="3">No actions taken.<\/td><\/tr>'}<\/table>
+      <p class="muted">Test cost ${r.cost}; an efficient route needs ${r.policyCost}. ${r.nTests} tests, ${r.redundant} told you nothing new.<\/p>
+      <h2>Integrity record<\/h2><p>${flags}<\/p><p class="muted">${esc(r.review)}. Flags are prompts for a person to look at the record. They are not a verdict and never reject anyone automatically.<\/p>
+      <p><button class="btn primary" id="again">Try another form<\/button> <button class="btn" id="dl">Download session record<\/button> <button class="btn" id="close">Close<\/button><\/p><\/div>`;
+    document.body.appendChild(ov);
+    $('#again', ov).onclick = () => { ov.remove(); start(Math.floor(Math.random() * 1e9)); };
+    $('#close', ov).onclick = () => ov.remove();
+    $('#dl', ov).onclick = () => { const b = new Blob([JSON.stringify({ form: form.formId, result: r, log: S.log, events: S.events }, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `session-${form.formId}.json`; a.click(); };
+    $('#again', ov).focus();
+  }
+
+  function briefing() {
+    const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'brief'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    ov.innerHTML = `<div class="modal"><div class="kicker">${BRICK}<span>Field service · fault-finding · prototype<\/span><\/div><h1>Before you start<\/h1>
+      <p>Packaging cell 3 has stopped. You are the technician. Find the part that has failed using as few tests as you sensibly can.<\/p>
+      <ul><li><b>Operate<\/b> the isolator, emergency stop and enable switches with the hand tool. Switching costs nothing.<\/li>
+      <li><b>Test<\/b> with the voltmeter, clamp ammeter or a spare part. Each test has a cost, shown at the top.<\/li>
+      <li><b>Ask<\/b> the AI mentor or read the reference guide for specs, meters and method. The mentor will not name the fault.<\/li>
+      <li>There is no visible countdown. You can use the keyboard throughout (Tab, Enter).<\/li><\/ul>
+      <h2>What is recorded<\/h2><p class="muted">Your switch settings, tests, mentor questions and timings, and whether you leave this window, copy text or paste into a field. A person reviews these only if something looks unusual. No score is ever rejected automatically.<\/p>
+      <p><button class="btn primary" id="go">Start<\/button><\/p><\/div>`;
+    document.body.appendChild(ov);
+    $('#go', ov).onclick = () => { ov.remove(); };
+    $('#go', ov).focus();
+  }
+
+  function start(seed, force) {
+    const q = new URLSearchParams(location.search);
+    let f = force;
+    if (!f && q.get('fault')) { const [id, mode] = q.get('fault').split(':'); f = { id, mode }; }
+    form = E.generate(seed, f); S = E.createSession(form); trace = []; selected = null; pendingSwap = null; tool = 'hand';
+    mount();
+    document.querySelectorAll('.overlay').forEach((o) => { if (o.id !== 'brief') o.remove(); });
+    say('Start by switching the conveyor and pump on with the hand tool.');
+    window.__session = S;
+  }
+  const seedParam = new URLSearchParams(location.search).get('seed');
+  start(seedParam ? Number(seedParam) : Math.floor(Math.random() * 1e9));
+  briefing();
+})();
+
+</script>
+</body>
+</html>

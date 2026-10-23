@@ -1,4 +1,0 @@
-streamlit>=1.40
-numpy>=1.26
-scikit-learn>=1.4
-anthropic>=2.0   # only needed for LLM_MODE=live

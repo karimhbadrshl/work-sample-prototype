@@ -32,7 +32,7 @@ def main(name: str):
 
     if not (REPO / ".git").exists():   # fresh starter folder: make it a repo on main
         run("git", "init", "-b", "main")
-    run(sys.executable, "tools/build_static.py")
+    run(sys.executable, "tools/build_game.py")
     readme = REPO / "README.md"
     readme.write_text(re.sub(r"https://REPLACE-ME[^)\s]*|https://[\w-]+\.github\.io/[\w.-]+/", url,
                              readme.read_text(encoding="utf-8")), encoding="utf-8")

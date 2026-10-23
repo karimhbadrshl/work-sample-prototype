@@ -4,7 +4,7 @@
 
 - no private files tracked or staged (notes, submission, references, .claude, CLAUDE.md, Word/PDF files)
 - no API keys in tracked files
-- docs/index.html exists and is newer than every file under prototype/
+- docs/index.html exists and is newer than every file under game/
 - README has a real demo link (no placeholder left)
 """
 import pathlib
@@ -34,17 +34,16 @@ def main():
                 problems.append(f"possible API key in {f}")
     html = REPO / "docs/index.html"
     if not html.exists():
-        problems.append("docs/index.html missing: run python tools/build_static.py")
+        problems.append("docs/index.html missing: run python tools/build_game.py")
     else:
-        newest = max(p.stat().st_mtime for p in (REPO / "prototype").rglob("*") if p.is_file() and "__pycache__" not in p.parts)
+        newest = max(p.stat().st_mtime for p in (REPO / "game").rglob("*") if p.is_file() and "__pycache__" not in p.parts)
         if newest > html.stat().st_mtime:
-            problems.append("docs/index.html is older than prototype/: run python tools/build_static.py")
+            problems.append("docs/index.html is older than game/: run python tools/build_game.py")
     if "REPLACE-ME" in (REPO / "README.md").read_text(encoding="utf-8"):
         problems.append("README.md still has the REPLACE-ME demo link (tools/publish.py fills it)")
-    cfg = (REPO / "prototype/config.py").read_text(encoding="utf-8")
-    if re.search(r"^EXAMPLE_CONTENT\s*=\s*True", cfg, re.M):
-        problems.append("prototype/config.py still has EXAMPLE_CONTENT = True (starter example not replaced)")
-    for f in ["README.md", "DECISIONS.md", "prototype/APPROACH.md"]:
+    if not (REPO / "game/results.json").exists():
+        problems.append("game/results.json missing: run node game/eval.js")
+    for f in ["README.md", "DECISIONS.md", "game/APPROACH.md"]:
         p = REPO / f
         if p.exists() and "[EDIT" in p.read_text(encoding="utf-8"):
             problems.append(f"{f} still has [EDIT ...] placeholders")

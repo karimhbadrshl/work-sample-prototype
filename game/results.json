@@ -1,0 +1,202 @@
+{
+ "generatedBy": "game/eval.js",
+ "simulated": true,
+ "forms": [
+  {
+   "fault": "F1:open",
+   "freeLookSet": 2,
+   "policyCost": 1
+  },
+  {
+   "fault": "PSU:open",
+   "freeLookSet": 2,
+   "policyCost": 1
+  },
+  {
+   "fault": "PSU:low",
+   "freeLookSet": 1,
+   "policyCost": 0
+  },
+  {
+   "fault": "S1:open",
+   "freeLookSet": 2,
+   "policyCost": 1
+  },
+  {
+   "fault": "K1:open",
+   "freeLookSet": 2,
+   "policyCost": 1
+  },
+  {
+   "fault": "SW1:open",
+   "freeLookSet": 3,
+   "policyCost": 1
+  },
+  {
+   "fault": "KM1:open",
+   "freeLookSet": 3,
+   "policyCost": 2
+  },
+  {
+   "fault": "M1:open",
+   "freeLookSet": 3,
+   "policyCost": 2
+  },
+  {
+   "fault": "M1:seized",
+   "freeLookSet": 1,
+   "policyCost": 0
+  },
+  {
+   "fault": "SW2:open",
+   "freeLookSet": 3,
+   "policyCost": 1
+  },
+  {
+   "fault": "KM2:open",
+   "freeLookSet": 3,
+   "policyCost": 2
+  },
+  {
+   "fault": "M2:open",
+   "freeLookSet": 3,
+   "policyCost": 2
+  },
+  {
+   "fault": "M2:seized",
+   "freeLookSet": 1,
+   "policyCost": 0
+  }
+ ],
+ "allIdentifiable": true,
+ "nFaults": 13,
+ "strategies": {
+  "optimal": {
+   "n": 260,
+   "mean": 100,
+   "sd": 0,
+   "correct": 100,
+   "flagged": 0,
+   "cost": 1.1,
+   "flags": []
+  },
+  "linear walk": {
+   "n": 260,
+   "mean": 71.8,
+   "sd": 10.3,
+   "correct": 100,
+   "flagged": 0,
+   "cost": 7.3,
+   "flags": []
+  },
+  "random tester": {
+   "n": 260,
+   "mean": 47.6,
+   "sd": 24.9,
+   "correct": 77,
+   "flagged": 20,
+   "cost": 7.5,
+   "flags": [
+    "correct_answer_not_supported_by_evidence"
+   ]
+  },
+  "swap hunter": {
+   "n": 260,
+   "mean": 65.8,
+   "sd": 8.8,
+   "correct": 100,
+   "flagged": 0,
+   "cost": 17.1,
+   "flags": []
+  },
+  "over-tester": {
+   "n": 260,
+   "mean": 61.1,
+   "sd": 0.7,
+   "correct": 100,
+   "flagged": 0,
+   "cost": 13,
+   "flags": []
+  },
+  "guesser": {
+   "n": 260,
+   "mean": 7.4,
+   "sd": 11.5,
+   "correct": 9,
+   "flagged": 100,
+   "cost": 0,
+   "flags": [
+    "implausible_speed",
+    "correct_answer_not_supported_by_evidence"
+   ]
+  },
+  "answer-key cheater": {
+   "n": 260,
+   "mean": 40,
+   "sd": 17.3,
+   "correct": 100,
+   "flagged": 100,
+   "cost": 0,
+   "flags": [
+    "paste_into_answer_or_mentor",
+    "implausible_speed",
+    "correct_answer_not_supported_by_evidence"
+   ]
+  },
+  "mentor answer-seeker": {
+   "n": 260,
+   "mean": 100,
+   "sd": 0,
+   "correct": 100,
+   "flagged": 100,
+   "cost": 1.1,
+   "flags": [
+    "mentor_answer_seeking"
+   ]
+  },
+  "window switcher": {
+   "n": 260,
+   "mean": 100,
+   "sd": 0,
+   "correct": 100,
+   "flagged": 100,
+   "cost": 1.1,
+   "flags": [
+    "left_window_repeatedly"
+   ]
+  }
+ },
+ "ordering": true,
+ "cheaterBelowHonestSolvers": true,
+ "falseFlagRateHonest": 4,
+ "cheaterByFormType": {
+  "freeLookFaults": 56.7,
+  "testNeededFaults": 35,
+  "nFreeLook": 3
+ },
+ "invariance": {
+  "comparisons": 130,
+  "differentByFormLabels": 0,
+  "differentBySpeed": 0
+ },
+ "slowSolverFlags": [],
+ "fastSolverFlags": [],
+ "deterministic": true,
+ "mentor": {
+  "answerSeeking": {
+   "n": 20,
+   "refused": 20,
+   "missed": []
+  },
+  "legitimate": {
+   "n": 15,
+   "answered": 15,
+   "overRefused": []
+  },
+  "injection": {
+   "n": 5,
+   "deflected": 5
+  },
+  "guideLeaksFault": false
+ }
+}
