@@ -6,12 +6,11 @@
 
 **What to do when it opens**
 
-1. **Take the guided practice (about three minutes).** A short walkthrough on a practice fault shows you each tool, one step at a time, and is not scored. You can skip it. Then the real task starts: a different fault, no hints.
-2. **Play the real fault.** With the *Hand* tool, switch the conveyor and pump on (click the switches). Pick the *Voltmeter* and click parts to read their output; each reading costs 1, a spare part costs 3. Choose *Your diagnosis* at the right, press *Submit diagnosis* twice, and read the result: score, the fault, your path and an integrity record.
-3. **Ask the AI mentor** (right panel). It explains parts, meters and method and tells you what a healthy part reads. Try asking it *"Which part is faulty?"*: it will not say. The *Reference guide* tab has the same specs without the chat.
-4. **Try another form.** *Load another form* gives a different fault with different part labels, so no two candidates share an answer key.
+1. **Take the guided practice (about two minutes).** A walkthrough on a practice fault shows you each tool, one step at a time, with Previous and Next. It is not scored, and you can skip it.
+2. **Do the two real items.** Pump 3 will not fill its tank. Click the pump switch with the *Hand* tool, use the *Voltmeter* (cost 1) or a *Spare part* (cost 3), then pick the failed part in *Your diagnosis* and press *Submit diagnosis* twice. Fix the right part and the tank fills. The second item is harder if your first diagnosis was sound, easier if not.
+3. **Ask the AI mentor** (right panel) what a healthy part reads, or try *"Which part is faulty?"*. It will not say. The *Reference guide* tab has the same specs.
 
-The demo runs the AI mentor in **mock mode**: a transparent rules assistant that is never given the fault, so it cannot leak it. It needs no API key. A live language-model mentor would sit behind a server, with the same guardrails and the same test prompts.
+The demo runs the AI mentor in **mock mode**: a transparent rules assistant that is never given the fault, so it cannot leak it. It needs no API key. A live language-model mentor would sit behind a server, with the same guardrails and test prompts.
 
 ---
 
@@ -19,11 +18,11 @@ The demo runs the AI mentor in **mock mode**: a transparent rules assistant that
 
 | | |
 |---|---|
-| [game/engine.js](game/engine.js) | The whole model: supply tree, fault generator, tests, scoring, mentor mock, integrity flags. No dependencies. |
-| [game/ui.js](game/ui.js), [game/style.css](game/style.css) | The scene, tools and screens (plain JavaScript and SVG) |
+| [game/engine.js](game/engine.js) | The whole model: pump line, item bank and routing, tests, scoring, mentor mock, integrity flags. No dependencies. |
+| [game/ui.js](game/ui.js), [game/style.css](game/style.css) | The scene, tools, practice and screens (plain JavaScript and SVG) |
 | [game/eval.js](game/eval.js), [game/results.md](game/results.md) | Evaluation on simulated candidates, run with `node game/eval.js` |
-| [game/APPROACH.md](game/APPROACH.md) | Design, scoring and anti-cheating in one page |
+| [game/APPROACH.md](game/APPROACH.md) | Design, scoring, routing and anti-cheating in one page |
 | [DECISIONS.md](DECISIONS.md) | Decisions log: what I chose, what I rejected, and the trade-off |
 | [tools/](tools/) | Build of the single-page demo (`build_game.py`), browser check, publishing |
 
-All data are synthetic. There is no real candidate data, and the evaluation uses simulated candidates, so it shows the scoring behaves as designed, not that it is valid.
+All data are synthetic. The evaluation uses simulated candidates, so it shows the scoring behaves as designed, not that it is valid.

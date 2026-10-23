@@ -3,7 +3,7 @@
  "simulated": true,
  "forms": [
   {
-   "fault": "F1:open",
+   "fault": "F:open",
    "freeLookSet": 2,
    "policyCost": 1
   },
@@ -18,169 +18,231 @@
    "policyCost": 0
   },
   {
-   "fault": "S1:open",
-   "freeLookSet": 2,
-   "policyCost": 1
-  },
-  {
-   "fault": "K1:open",
-   "freeLookSet": 2,
-   "policyCost": 1
-  },
-  {
-   "fault": "SW1:open",
+   "fault": "LS:open",
    "freeLookSet": 3,
    "policyCost": 1
   },
   {
-   "fault": "KM1:open",
+   "fault": "K:open",
    "freeLookSet": 3,
    "policyCost": 2
   },
   {
-   "fault": "M1:open",
+   "fault": "M:open",
    "freeLookSet": 3,
    "policyCost": 2
   },
   {
-   "fault": "M1:seized",
-   "freeLookSet": 1,
-   "policyCost": 0
-  },
-  {
-   "fault": "SW2:open",
-   "freeLookSet": 3,
-   "policyCost": 1
-  },
-  {
-   "fault": "KM2:open",
-   "freeLookSet": 3,
-   "policyCost": 2
-  },
-  {
-   "fault": "M2:open",
-   "freeLookSet": 3,
-   "policyCost": 2
-  },
-  {
-   "fault": "M2:seized",
+   "fault": "M:seized",
    "freeLookSet": 1,
    "policyCost": 0
   }
  ],
  "allIdentifiable": true,
- "nFaults": 13,
+ "nFaults": 7,
+ "tiers": {
+  "easy": {
+   "items": 2,
+   "policyCost": [
+    0,
+    0
+   ]
+  },
+  "medium": {
+   "items": 3,
+   "policyCost": [
+    1,
+    1,
+    1
+   ]
+  },
+  "hard": {
+   "items": 2,
+   "policyCost": [
+    2,
+    2
+   ]
+  }
+ },
  "strategies": {
   "optimal": {
-   "n": 260,
+   "n": 140,
    "mean": 100,
    "sd": 0,
    "correct": 100,
    "flagged": 0,
-   "cost": 1.1,
-   "flags": []
+   "cost": 1
   },
   "linear walk": {
-   "n": 260,
-   "mean": 71.8,
-   "sd": 10.3,
+   "n": 140,
+   "mean": 83.6,
+   "sd": 9.3,
    "correct": 100,
    "flagged": 0,
-   "cost": 7.3,
-   "flags": []
+   "cost": 3.7
   },
   "random tester": {
-   "n": 260,
-   "mean": 47.6,
-   "sd": 24.9,
-   "correct": 77,
-   "flagged": 20,
-   "cost": 7.5,
-   "flags": [
-    "correct_answer_not_supported_by_evidence"
-   ]
+   "n": 140,
+   "mean": 60.1,
+   "sd": 24.6,
+   "correct": 86,
+   "flagged": 13,
+   "cost": 5.8
   },
   "swap hunter": {
-   "n": 260,
-   "mean": 65.8,
-   "sd": 8.8,
+   "n": 140,
+   "mean": 69.9,
+   "sd": 10.5,
    "correct": 100,
    "flagged": 0,
-   "cost": 17.1,
-   "flags": []
+   "cost": 9.4
   },
   "over-tester": {
-   "n": 260,
-   "mean": 61.1,
-   "sd": 0.7,
+   "n": 140,
+   "mean": 73,
+   "sd": 3.8,
    "correct": 100,
    "flagged": 0,
-   "cost": 13,
-   "flags": []
+   "cost": 6
   },
   "guesser": {
-   "n": 260,
-   "mean": 7.4,
-   "sd": 11.5,
-   "correct": 9,
+   "n": 140,
+   "mean": 11.6,
+   "sd": 19.4,
+   "correct": 19,
    "flagged": 100,
-   "cost": 0,
-   "flags": [
-    "implausible_speed",
-    "correct_answer_not_supported_by_evidence"
-   ]
+   "cost": 0
   },
   "answer-key cheater": {
-   "n": 260,
-   "mean": 40,
-   "sd": 17.3,
+   "n": 140,
+   "mean": 44.3,
+   "sd": 22.7,
    "correct": 100,
    "flagged": 100,
-   "cost": 0,
-   "flags": [
-    "paste_into_answer_or_mentor",
-    "implausible_speed",
-    "correct_answer_not_supported_by_evidence"
-   ]
+   "cost": 0
   },
   "mentor answer-seeker": {
-   "n": 260,
+   "n": 140,
    "mean": 100,
    "sd": 0,
    "correct": 100,
    "flagged": 100,
-   "cost": 1.1,
-   "flags": [
-    "mentor_answer_seeking"
-   ]
+   "cost": 1
   },
   "window switcher": {
-   "n": 260,
+   "n": 140,
    "mean": 100,
    "sd": 0,
    "correct": 100,
    "flagged": 100,
-   "cost": 1.1,
-   "flags": [
-    "left_window_repeatedly"
-   ]
+   "cost": 1
   }
  },
  "ordering": true,
  "cheaterBelowHonestSolvers": true,
- "falseFlagRateHonest": 4,
+ "falseFlagRateHonest": 0,
  "cheaterByFormType": {
-  "freeLookFaults": 56.7,
+  "freeLookFaults": 67.5,
   "testNeededFaults": 35,
-  "nFreeLook": 3
+  "nFreeLook": 2
+ },
+ "routing": {
+  "optimal": {
+   "n": 120,
+   "toHardPct": 100,
+   "bands": {
+    "Advanced": 100,
+    "Proficient": 0,
+    "Developing": 0,
+    "Beginning": 0
+   }
+  },
+  "linear walk": {
+   "n": 120,
+   "toHardPct": 100,
+   "bands": {
+    "Advanced": 100,
+    "Proficient": 0,
+    "Developing": 0,
+    "Beginning": 0
+   }
+  },
+  "random tester": {
+   "n": 120,
+   "toHardPct": 58,
+   "bands": {
+    "Advanced": 34,
+    "Proficient": 24,
+    "Developing": 42,
+    "Beginning": 0
+   }
+  },
+  "swap hunter": {
+   "n": 120,
+   "toHardPct": 100,
+   "bands": {
+    "Advanced": 100,
+    "Proficient": 0,
+    "Developing": 0,
+    "Beginning": 0
+   }
+  },
+  "over-tester": {
+   "n": 120,
+   "toHardPct": 100,
+   "bands": {
+    "Advanced": 100,
+    "Proficient": 0,
+    "Developing": 0,
+    "Beginning": 0
+   }
+  },
+  "guesser": {
+   "n": 120,
+   "toHardPct": 0,
+   "bands": {
+    "Advanced": 0,
+    "Proficient": 0,
+    "Developing": 15,
+    "Beginning": 85
+   }
+  },
+  "answer-key cheater": {
+   "n": 120,
+   "toHardPct": 0,
+   "bands": {
+    "Advanced": 0,
+    "Proficient": 0,
+    "Developing": 50,
+    "Beginning": 50
+   }
+  },
+  "mentor answer-seeker": {
+   "n": 120,
+   "toHardPct": 100,
+   "bands": {
+    "Advanced": 100,
+    "Proficient": 0,
+    "Developing": 0,
+    "Beginning": 0
+   }
+  },
+  "window switcher": {
+   "n": 120,
+   "toHardPct": 100,
+   "bands": {
+    "Advanced": 100,
+    "Proficient": 0,
+    "Developing": 0,
+    "Beginning": 0
+   }
+  }
  },
  "invariance": {
-  "comparisons": 130,
+  "comparisons": 70,
   "differentByFormLabels": 0,
   "differentBySpeed": 0
  },
- "slowSolverFlags": [],
- "fastSolverFlags": [],
  "deterministic": true,
  "mentor": {
   "answerSeeking": {
@@ -196,7 +258,6 @@
   "injection": {
    "n": 5,
    "deflected": 5
-  },
-  "guideLeaksFault": false
+  }
  }
 }

@@ -3,49 +3,39 @@
 (function (root) {
   'use strict';
 
-  // Supply tree: each node's output depends on its parent. Single fault per form.
+  // One pump line: mains, fuse, power supply, operator switch, level switch, contactor, pump motor. Single fault per item.
   const NODES = [
     { id: 'MAINS', parent: null, kind: 'source', name: 'Mains inlet' },
-    { id: 'Q1', parent: 'MAINS', kind: 'isolator', name: 'Isolator', gate: 'Q1' },
-    { id: 'F1', parent: 'Q1', kind: 'fuse', name: 'Fuse', modes: ['open'] },
-    { id: 'PSU', parent: 'F1', kind: 'psu', name: 'Power supply', modes: ['open', 'low'] },
-    { id: 'S1', parent: 'PSU', kind: 'estop', name: 'Emergency stop', gate: 'S1', modes: ['open'] },
-    { id: 'K1', parent: 'S1', kind: 'relay', name: 'Safety relay', modes: ['open'] },
-    { id: 'SW1', parent: 'K1', kind: 'toggle', name: 'Conveyor enable switch', gate: 'SW1', modes: ['open'] },
-    { id: 'KM1', parent: 'SW1', kind: 'contactor', name: 'Conveyor contactor', modes: ['open'] },
-    { id: 'M1', parent: 'KM1', kind: 'motor', name: 'Conveyor motor', modes: ['open', 'seized'] },
-    { id: 'SW2', parent: 'K1', kind: 'toggle', name: 'Pump enable switch', gate: 'SW2', modes: ['open'] },
-    { id: 'KM2', parent: 'SW2', kind: 'contactor', name: 'Pump contactor', modes: ['open'] },
-    { id: 'M2', parent: 'KM2', kind: 'motor', name: 'Pump motor', modes: ['open', 'seized'] },
+    { id: 'F', parent: 'MAINS', kind: 'fuse', name: 'Fuse', modes: ['open'] },
+    { id: 'PSU', parent: 'F', kind: 'psu', name: 'Power supply', modes: ['open', 'low'] },
+    { id: 'SW', parent: 'PSU', kind: 'toggle', name: 'Pump switch', gate: 'SW' },
+    { id: 'LS', parent: 'SW', kind: 'level', name: 'Level switch', modes: ['open'] },
+    { id: 'K', parent: 'LS', kind: 'contactor', name: 'Contactor', modes: ['open'] },
+    { id: 'M', parent: 'K', kind: 'motor', name: 'Pump motor', modes: ['open', 'seized'] },
   ];
   const BY_ID = Object.fromEntries(NODES.map((n) => [n.id, n]));
   const HYPS = [];
   NODES.forEach((n) => (n.modes || []).forEach((m) => HYPS.push({ id: n.id, mode: m })));
   const FAULTABLE = NODES.filter((n) => n.modes).map((n) => n.id);
-  const COST = { V: 1, I: 1, SWAP: 3 };
-  const INITIAL = { Q1: true, S1: true, SW1: false, SW2: false }; // S1 true = released
-  const ALL_ON = { Q1: true, S1: true, SW1: true, SW2: true };
-  const PULL_IN = 20; // volts: relays and contactors drop out below this
+  const COST = { V: 1, SWAP: 3 };
+  const INITIAL = { SW: false };
+  const ALL_ON = { SW: true };
+  const PULL_IN = 20; // volts: the contactor drops out below this
+  // Item bank by difficulty tier. Difficulty = how many paid tests an efficient route needs (0, 1, 2).
+  const ITEMS = { easy: [{ id: 'M', mode: 'seized' }, { id: 'PSU', mode: 'low' }], medium: [{ id: 'F', mode: 'open' }, { id: 'PSU', mode: 'open' }, { id: 'LS', mode: 'open' }], hard: [{ id: 'K', mode: 'open' }, { id: 'M', mode: 'open' }] };
 
   function solve(state, fault) {
     const out = {};
     for (const n of NODES) {
       const vin = n.parent === null ? 230 : out[n.parent].v;
       const f = fault && fault.id === n.id ? fault.mode : null;
-      let v = vin, i = 0, run = false, hum = false;
-      if (n.kind === 'source') v = 230;
+      let v = vin, run = false, hum = false;
       if (n.gate && !state[n.gate]) v = 0;
       if (f === 'open' && n.kind !== 'motor') v = 0;
       if (n.kind === 'psu') v = vin >= 100 && f !== 'open' ? (f === 'low' ? 17 : 24) : 0;
-      if ((n.kind === 'relay' || n.kind === 'contactor') && vin < PULL_IN) v = 0;
-      if (n.kind === 'motor') {
-        v = vin;
-        const powered = v >= PULL_IN;
-        run = powered && f === null;
-        hum = powered && f === 'seized';
-        i = powered ? (f === 'seized' ? 9.8 : f === 'open' ? 0 : 2.1) : 0;
-      }
-      out[n.id] = { v, i, run, hum };
+      if (n.kind === 'contactor' && vin < PULL_IN) v = 0;
+      if (n.kind === 'motor') { v = vin; const powered = v >= PULL_IN; run = powered && f === null; hum = powered && f === 'seized'; }
+      out[n.id] = { v, run, hum };
     }
     return out;
   }
@@ -53,21 +43,17 @@
   // Free observations: what the candidate can see and hear without spending test budget.
   function observe(state, fault) {
     const o = solve(state, fault);
-    const motor = (m) => (m.hum ? 'humming' : m.run ? 'running' : 'stopped');
-    return { H1: o.PSU.v >= PULL_IN ? 'on' : o.PSU.v > 0 ? 'dim' : 'off', H2: o.K1.v >= PULL_IN ? 'on' : 'off', M1: motor(o.M1), M2: motor(o.M2) };
+    return { H1: o.PSU.v >= PULL_IN ? 'on' : o.PSU.v > 0 ? 'dim' : 'off', M: o.M.hum ? 'humming' : o.M.run ? 'running' : 'stopped' };
   }
 
-  // Paid tests. A test is {type:'V'|'I'|'SWAP', node}.
+  // Paid tests. A test is {type:'V'|'SWAP', node}.
   function measure(test, state, fault) {
-    const o = solve(state, fault);
-    if (test.type === 'V') return String(o[test.node].v);
-    if (test.type === 'I') return String(o[test.node].i);
+    if (test.type === 'V') return String(solve(state, fault)[test.node].v);
     return fault && fault.id === test.node ? 'fixed' : 'nochange';
   }
   function allTests() {
     const t = [];
     NODES.forEach((n) => { if (n.kind !== 'source') t.push({ type: 'V', node: n.id }); });
-    ['M1', 'M2'].forEach((m) => t.push({ type: 'I', node: m }));
     FAULTABLE.forEach((id) => t.push({ type: 'SWAP', node: id }));
     return t;
   }
@@ -122,9 +108,15 @@
     const rnd = mulberry32(seed >>> 0);
     const fault = forceFault || HYPS[Math.floor(rnd() * HYPS.length)];
     const o = Math.floor(rnd() * 4);
-    const tags = { MAINS: 'Mains', Q1: 'Q1', F1: 'F' + (1 + o), PSU: 'PSU1', S1: 'S' + (1 + o), K1: 'K' + (1 + o), SW1: 'SW' + (1 + o), SW2: 'SW' + (2 + o), KM1: 'KM' + (1 + o), KM2: 'KM' + (2 + o), M1: 'M' + (1 + o), M2: 'M' + (2 + o) };
+    const tags = { MAINS: 'Mains', F: 'F' + (1 + o), PSU: 'PSU1', SW: 'S' + (1 + o), LS: 'LS' + (1 + o), K: 'K' + (1 + o), M: 'M' + (1 + o) };
     return { seed, formId: 'FF-' + (seed >>> 0).toString(36).toUpperCase().padStart(4, '0'), fault, tags };
   }
+  function pickItem(tier, seed) { const list = ITEMS[tier]; const r = mulberry32((seed >>> 0) + 17)(); const f = generate(seed, list[Math.floor(r * list.length)]); f.tier = tier; return f; }
+  // Two-stage routing: start at medium. A diagnosis counts as sound when it is correct AND the candidate's own tests supported it
+  // (a lucky or pasted answer does not route up). Sound goes to hard, otherwise easy.
+  const sound = (r) => r.correct && r.justified;
+  const route = (r) => (sound(r) ? 'hard' : 'easy');
+  function band(r1, r2) { if (sound(r1)) return sound(r2) ? 'Advanced' : 'Proficient'; return sound(r2) ? 'Developing' : 'Beginning'; }
   const label = (form, id) => `${BY_ID[id].name} ${form.tags[id]}`;
 
   // ---- AI mentor (mock). It is given the guide and the question only, never the fault: it cannot leak what it does not know.
@@ -133,28 +125,23 @@
     const L = (name, tag) => `${name} ${tag}`;
     return [
       { id: 'method', keys: ['method', 'approach', 'strategy', 'where', 'start', 'how do i', 'how to', 'begin', 'stuck', 'help'],
-        title: 'Method', text: 'Work from what you can see to what you can measure. Each test narrows where the fault can be. A reading at a point in the supply chain tells you whether the fault is upstream or downstream of it, so a test near the middle of the remaining chain rules out more than one at the ends. Free observations (lamps, motors) cost nothing; meter readings cost 1, a spare swap costs 3.' },
-      { id: 'meter', keys: ['meter', 'voltmeter', 'measure', 'probe', 'clamp', 'ammeter', 'amps', 'current', 'reading', 'tool'],
-        title: 'Using the meters', text: `Voltmeter: pick it, then click any part to read the voltage at its output terminal (mains side is AC, everything after ${T.PSU} is 24 V DC). Clamp ammeter: works on the motor leads only. A switch that is off or an engaged emergency stop gives 0 V by design, so check switch positions before you read anything.` },
-      { id: 'lamps', keys: ['lamp', 'light', 'h1', 'h2', 'indicator', 'led'],
-        title: 'Indicator lamps', text: `H1 shows the ${T.PSU} output: lit at 20 V or more, dim between 0 and 20 V, dark at 0 V. H2 shows the ${T.K1} output: lit only when the relay has pulled in. A lamp tells you the voltage at one point only.` },
+        title: 'Method', text: 'Work from what you can see to what you can measure. A reading at a point in the line tells you whether the fault is before it or after it, so a test near the middle of what is left rules out more than one at the ends. Lamps and sounds are free; a voltmeter reading costs 1; a spare part costs 3.' },
+      { id: 'meter', keys: ['meter', 'voltmeter', 'measure', 'probe', 'reading', 'tool'],
+        title: 'The voltmeter', text: `Pick the voltmeter, then click a part to read the voltage at its output terminal. The mains side (up to the fuse) is 230 V AC; everything after ${T.PSU} is 24 V DC. The pump switch gives 0 V when it is off, which is normal, so switch it on before you read anything.` },
+      { id: 'lamps', keys: ['lamp', 'light', 'h1', 'indicator', 'led'],
+        title: 'Lamp H1', text: `H1 shows the ${T.PSU} output: lit at 20 V or more, dim between 0 and 20 V, dark at 0 V.` },
       { id: 'swap', keys: ['swap', 'spare', 'replace', 'change part'],
-        title: 'Spare parts', text: 'A known-good spare can be swapped into any part except the isolator and the enable switches you can already operate. It costs 3 and tells you only whether that one part was the cause. It is a confirmation tool, not a search tool.' },
-      { id: 'safety', keys: ['safe', 'safety', 'lockout', 'danger', 'shock'],
-        title: 'Safety', text: 'On site you would lock out and verify dead before touching anything. In this simulator you may probe live parts.' },
-      { id: 'hum', keys: ['hum', 'noise', 'sound', 'buzz', 'smell'],
-        title: 'Motor sounds', text: 'A motor with power at its terminals that hums but does not turn is mechanically stuck. A motor with power and no sound and no current has an open winding or lead.' },
-      { id: 'Q1', keys: [T.Q1.toLowerCase(), 'isolator', 'disconnect'], title: L('Isolator', T.Q1), text: 'Manual isolator. ON: 230 V AC passes. OFF: 0 V downstream. Off is not a fault.' },
-      { id: 'F1', keys: [T.F1.toLowerCase(), 'fuse'], title: L('Fuse', T.F1), text: `6.3 A slow-blow fuse. Healthy: 230 V AC at its output with ${T.Q1} on. A blown fuse passes no voltage.` },
-      { id: 'PSU', keys: [T.PSU.toLowerCase(), 'psu', 'power supply', 'transformer'], title: L('Power supply', T.PSU), text: '230 V AC in, 24 V DC out. Healthy output 21.6 to 26.4 V. Relays and contactors need 20 V or more to pull in, so a supply that sags below 20 V can look like a dead relay downstream.' },
-      { id: 'S1', keys: [T.S1.toLowerCase(), 'estop', 'e-stop', 'emergency'], title: L('Emergency stop', T.S1), text: 'Normally-closed mushroom button. Released: 24 V passes. Pressed in: 0 V downstream, which is a normal state, not a fault. Twist to release.' },
-      { id: 'K1', keys: [T.K1.toLowerCase(), 'relay', 'safety relay'], title: L('Safety relay', T.K1), text: 'Pulls in when its input is 20 V or more and the emergency stop is released. Healthy output equals its input (24 V). H2 shows its output.' },
-      { id: 'SW1', keys: [T.SW1.toLowerCase(), 'conveyor enable', 'enable switch'], title: L('Conveyor enable switch', T.SW1), text: 'Toggle that passes 24 V to the conveyor contactor when ON.' },
-      { id: 'SW2', keys: [T.SW2.toLowerCase(), 'pump enable'], title: L('Pump enable switch', T.SW2), text: 'Toggle that passes 24 V to the pump contactor when ON.' },
-      { id: 'KM1', keys: [T.KM1.toLowerCase(), 'conveyor contactor', 'contactor'], title: L('Conveyor contactor', T.KM1), text: 'Pulls in at 20 V or more at its coil feed and passes 24 V to the conveyor motor.' },
-      { id: 'KM2', keys: [T.KM2.toLowerCase(), 'pump contactor'], title: L('Pump contactor', T.KM2), text: 'Pulls in at 20 V or more at its coil feed and passes 24 V to the pump motor.' },
-      { id: 'M1', keys: [T.M1.toLowerCase(), 'conveyor motor', 'conveyor', 'motor'], title: L('Conveyor motor', T.M1), text: '24 V DC motor. Healthy: 24 V at terminals, 2.1 A run current, turns. Seized rotor: 24 V at terminals, about 9.8 A, hums. Open winding: 24 V at terminals, 0 A.' },
-      { id: 'M2', keys: [T.M2.toLowerCase(), 'pump motor', 'pump'], title: L('Pump motor', T.M2), text: '24 V DC motor, same ratings as the conveyor motor: 2.1 A run current when healthy, about 9.8 A seized, 0 A with an open winding.' },
+        title: 'Spare part', text: 'A known-good spare can be swapped into any of the five parts. It costs 3 and tells you only whether that one part was the cause. If it was, the pump runs. It is a confirmation tool, not a search tool.' },
+      { id: 'hum', keys: ['hum', 'noise', 'sound', 'buzz'],
+        title: 'Motor sounds', text: 'A motor with power at its terminals that hums but does not turn is mechanically stuck. A motor with power and no sound has an open winding.' },
+      { id: 'tank', keys: ['tank', 'fill', 'filled', 'water'],
+        title: 'The tank', text: `When the pump runs, the tank fills. The level switch ${T.LS} is closed while the tank has room, and opens when it is full to stop the pump.` },
+      { id: 'F', keys: [T.F.toLowerCase(), 'fuse'], title: L('Fuse', T.F), text: '6.3 A slow-blow fuse. Healthy: 230 V AC at its output. A blown fuse passes no voltage.' },
+      { id: 'PSU', keys: [T.PSU.toLowerCase(), 'psu', 'power supply'], title: L('Power supply', T.PSU), text: '230 V AC in, 24 V DC out. Healthy output 21.6 to 26.4 V. The contactor needs 20 V or more to pull in, so a supply that sags below 20 V can look like a dead contactor downstream.' },
+      { id: 'SW', keys: [T.SW.toLowerCase(), 'pump switch', 'switch'], title: L('Pump switch', T.SW), text: 'Operator switch. ON passes 24 V on; OFF gives 0 V. Off is not a fault.' },
+      { id: 'LS', keys: [T.LS.toLowerCase(), 'level switch', 'float'], title: L('Level switch', T.LS), text: 'Closed while the tank has room, so 24 V passes through. It opens when the tank is full.' },
+      { id: 'K', keys: [T.K.toLowerCase(), 'contactor', 'relay'], title: L('Contactor', T.K), text: 'Pulls in at 20 V or more at its coil feed and passes 24 V to the pump motor.' },
+      { id: 'M', keys: [T.M.toLowerCase(), 'motor', 'pump'], title: L('Pump motor', T.M), text: '24 V DC motor. Healthy: 24 V at its terminals and it turns. Seized rotor: 24 V at the terminals, hums, does not turn. Open winding: 24 V at the terminals, silent, does not turn.' },
     ];
   }
 
@@ -166,14 +153,14 @@
     const q = String(question || '').trim();
     if (!q) return { intent: 'empty', flag: null, text: 'Ask about a part, a meter, a lamp, or how to approach the fault.' };
     if (RX_INJECT.test(q)) return { intent: 'injection', flag: 'mentor_injection_attempt', text: 'I only help with this cell: parts, meters, lamps and method. I cannot change my instructions.' };
-    if (RX_VERDICT.test(q) && !RX_SPEC.test(q)) return { intent: 'verdict', flag: 'mentor_answer_seeking', text: `I cannot say which part is at fault or confirm a guess; that is the task. I can tell you what a healthy part reads, how the meters work, or how to narrow down a fault. Try asking, for example, what the fuse ${tags.F1} should read.` };
+    if (RX_VERDICT.test(q) && !RX_SPEC.test(q)) return { intent: 'verdict', flag: 'mentor_answer_seeking', text: `I cannot say which part is at fault or confirm a guess; that is the task. I can tell you what a healthy part reads, how the meters work, or how to narrow down a fault. Try asking, for example, what the fuse ${tags.F} should read.` };
     const ql = q.toLowerCase();
     let best = null, bestScore = 0;
     for (const g of guide(tags)) {
       const s = g.keys.reduce((a, k) => a + (ql.includes(k) ? (k.length > 3 ? 2 : 1) : 0), 0);
       if (s > bestScore) { best = g; bestScore = s; }
     }
-    if (!best) return { intent: 'none', flag: null, text: `I did not catch that. I can help with a part (use its tag, for example ${tags.F1}), the meters, the lamps, spare parts or method.` };
+    if (!best) return { intent: 'none', flag: null, text: `I did not catch that. I can help with a part (use its tag, for example ${tags.F}), the meters, the lamps, spare parts or method.` };
     return { intent: 'info', flag: null, ref: best.id, text: best.title + ': ' + best.text };
   }
 
@@ -186,7 +173,7 @@
     const log = [];
     const events = [];
     const tests = [];
-    let cost = 0, redundant = 0, answerSeeks = 0, injects = 0, done = null;
+    let cost = 0, redundant = 0, answerSeeks = 0, injects = 0, done = null, fixed = false;
     const stamp = () => Math.round((now() - t0) / 100) / 10;
     const addObs = () => recs.push({ kind: 'obs', state: Object.assign({}, state), result: observe(state, form.fault) });
     addObs();
@@ -194,7 +181,8 @@
 
     const S = {
       form, state, log, events, tests,
-      observation: () => observe(state, form.fault),
+      observation: () => observe(state, fixed ? null : form.fault),
+      get fixed() { return fixed; },
       hypotheses: hyps,
       get cost() { return cost; },
       get done() { return done; },
@@ -202,7 +190,7 @@
         if (done || state[k] === val) return null;
         state[k] = val; addObs();
         events.push({ t: stamp(), type: 'action' });
-        const entry = { t: stamp(), kind: 'switch', switch: k, value: val, obs: observe(state, form.fault) };
+        const entry = { t: stamp(), kind: 'switch', switch: k, value: val, obs: observe(state, fixed ? null : form.fault) };
         log.push(entry); return entry;
       },
       test(t) {
@@ -212,6 +200,7 @@
         if (isRedundant) redundant++;
         recs.push({ kind: 'test', test: t, state: Object.assign({}, state), result });
         cost += COST[t.type];
+        if (result === 'fixed') fixed = true;
         events.push({ t: stamp(), type: 'action' });
         const entry = { t: stamp(), kind: 'test', test: t, result, redundant: isRedundant, cost: COST[t.type] };
         tests.push(entry); log.push(entry); return entry;
@@ -267,6 +256,6 @@
     return f;
   }
 
-  const api = { NODES, BY_ID, HYPS, FAULTABLE, TESTS, COST, INITIAL, ALL_ON, solve, observe, measure, consistent, opt, policyPath, afterFreeLook, generate, label, mentor, guide, createSession, integrity };
+  const api = { NODES, BY_ID, HYPS, FAULTABLE, TESTS, COST, INITIAL, ALL_ON, solve, observe, measure, consistent, opt, policyPath, afterFreeLook, generate, pickItem, route, band, ITEMS, label, mentor, guide, createSession, integrity };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Engine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -107,3 +107,6 @@ table.t th { color: var(--muted); font-family: var(--mono); font-size: 11px; tex
 @media (prefers-reduced-motion: reduce) { .part.hl .box, .tool.hl, #q.hl, #dxsel.hl { animation: none; } }
 .coachnav { display: flex; gap: 8px; margin: 6px 0 2px; }
 .coachnav .btn { padding: 4px 14px; }
+.water { transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(.08); transition: transform 6s linear; }
+.running .water { transform: scaleY(1); }
+@media (prefers-reduced-motion: reduce) { .water { transition: none; } }
